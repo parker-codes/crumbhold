@@ -16,7 +16,7 @@ bun run build      # typecheck, then a static bundle in dist/
 bun run preview    # serve the built bundle
 bun run typecheck  # tsc --noEmit on its own
 bun run test       # unit tests, 74 of them
-bun run sim -- --strategy balanced --seeds 20   # headless balance harness
+bun run sim -- --strategy balanced --seeds 50   # headless balance harness
 ```
 
 Vite and Vitest still do the building and testing, per spec section 5, which
@@ -109,10 +109,14 @@ from the game and not from a spreadsheet.
 
 | Check | Spec target | Measured |
 | --- | --- | --- |
-| Economy ceiling at night 12 | 75 to 85 percent of the 6355 full build | 76 to 78 percent, economy-first play, 60 seeds |
+| Economy ceiling at night 12 | 75 to 85 percent of the 6355 full build | 78 to 79 percent, economy-first play, 50 seeds |
 | Spitters only | fails around night 7 | median night 8, 20 seeds |
 | Economy only | fails around night 5 | median night 5, 20 seeds |
 | A built-out colony | reaches night 12 bruised | tier 2 everywhere clears 11 of 20 |
+
+Use at least 50 seeds, as section 20 asks. Small samples swing several points:
+the same invariant reads 74 percent over 5 seeds and 78 to 79 percent over 50,
+so a handful of runs is an anecdote rather than a measurement.
 
 Determinism is per engine. A seed replays exactly on the same runtime, which is
 what `tests/determinism.test.ts` asserts and what balance work needs. Wave
