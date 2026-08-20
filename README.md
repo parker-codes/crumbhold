@@ -6,14 +6,23 @@ day, hold three tunnels after dark, twelve nights then endless.
 Portrait mobile web first, playable on desktop. Static site, no backend, no
 accounts, no network calls.
 
+Requires [Bun](https://bun.sh) 1.3 or newer. Bun is the package manager and the
+script runner; there is no npm lockfile in the tree.
+
 ```bash
-npm install
-npm run dev        # dev server
-npm run build      # static bundle in dist/
-npm run preview    # serve the built bundle
-npm test           # unit tests
-npm run sim -- --strategy balanced --seeds 20   # headless balance harness
+bun install
+bun run dev        # dev server
+bun run build      # typecheck, then a static bundle in dist/
+bun run preview    # serve the built bundle
+bun run typecheck  # tsc --noEmit on its own
+bun run test       # unit tests, 74 of them
+bun run sim -- --strategy balanced --seeds 20   # headless balance harness
 ```
+
+Vite and Vitest still do the building and testing, per spec section 5, which
+limits dev dependencies to Vite, TypeScript, and Vitest. Bun replaces npm around
+them, and it runs `scripts/harness.ts` straight from TypeScript, so the harness
+needs no build step of its own.
 
 ## Controls
 
@@ -85,7 +94,7 @@ src/
   render/   scene, floor, lighting, creatures, structuresView, padsView,
             props, palette, view
   ui/       hud, overlays, onboarding, debug, style.css
-scripts/    harness.ts, bot.ts   headless balance tooling
+scripts/    harness.ts, bot.ts   headless balance tooling, run by Bun directly
 tests/      vitest, no DOM
 ```
 
@@ -95,15 +104,21 @@ a separate pass that reads state and mutates nothing.
 
 ## Balance
 
-`npm run sim` drives the real systems through a scripted bot, so the numbers come
+`bun run sim` drives the real systems through a scripted bot, so the numbers come
 from the game and not from a spreadsheet.
 
 | Check | Spec target | Measured |
 | --- | --- | --- |
-| Economy ceiling at night 12 | 75 to 85 percent of the 6355 full build | 77 to 84 percent, economy-first play |
+| Economy ceiling at night 12 | 75 to 85 percent of the 6355 full build | 76 to 78 percent, economy-first play, 60 seeds |
 | Spitters only | fails around night 7 | median night 8, 20 seeds |
 | Economy only | fails around night 5 | median night 5, 20 seeds |
 | A built-out colony | reaches night 12 bruised | tier 2 everywhere clears 11 of 20 |
+
+Determinism is per engine. A seed replays exactly on the same runtime, which is
+what `tests/determinism.test.ts` asserts and what balance work needs. Wave
+composition is integer and PRNG work and comes out bit-identical across engines;
+the physics-heavy collection figures can move by about a point between
+JavaScriptCore and V8. The table above was measured under Bun.
 
 `ECONOMY.dropMultiplier` is the section 10.8 fix. At 1.0 the harness reproduces
 the spec's own 61 to 72 percent baseline; 1.3 lands the ceiling inside the target

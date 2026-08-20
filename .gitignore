@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Bun is the only package manager here; keep rival lockfiles out of the tree.
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

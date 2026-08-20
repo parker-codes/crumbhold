@@ -1,0 +1,752 @@
+/* Crumbhold shell styles. Palette tokens mirror balance/palette.ts. */
+
+:root {
+  --ink: #22212b;
+  --sugar: #f5c147;
+  --sugar-deep: #c48a16;
+  --colony: #2e6f8e;
+  --foe: #c2405b;
+  --pebble: #8e97a8;
+  --trail: #a78d6b;
+  --resin: #b4713a;
+  --glowcap: #9be86b;
+  --glowworm: #ffb347;
+  --band-soil: #4a3f38;
+  --band-sky-day: #7fb4d4;
+  --band-sky-night: #1b2036;
+
+  --hud-scale: 1;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+
+  /* Section 12 asks for Rowdies 700 and Chivo 700/900, self-hosted as woff2 and
+     never from a CDN. Drop the subsetted files in and add the @font-face rules
+     here; until then these fall back to a heavy rounded face and a tabular sans. */
+  --font-display: 'Rowdies', 'Trebuchet MS', 'Verdana', system-ui, sans-serif;
+  --font-ui: 'Chivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+  background: #14131a;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  -webkit-user-drag: none;
+}
+
+#hud,
+#overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#hud {
+  font-size: calc(15px * var(--hud-scale));
+}
+
+/* ---------- Surface Band ---------- */
+
+.band {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(56px * var(--hud-scale));
+  padding-top: var(--safe-t);
+}
+
+.band svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- counters ---------- */
+
+.counters {
+  position: absolute;
+  left: calc(var(--safe-l) + 12px);
+  top: calc(var(--safe-t) + 56px * var(--hud-scale) + 8px);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 7px;
+  border-radius: 999px;
+  background: rgba(20, 19, 26, 0.62);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  font-weight: 900;
+  font-size: calc(20px * var(--hud-scale));
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.chip.hidden {
+  display: none;
+}
+
+.chip__glyph {
+  width: calc(18px * var(--hud-scale));
+  height: calc(18px * var(--hud-scale));
+  flex: none;
+}
+
+.chip__cap {
+  font-size: calc(12px * var(--hud-scale));
+  opacity: 0.66;
+  font-weight: 700;
+}
+
+.chip--sugar {
+  color: var(--sugar);
+}
+.chip--honeydew {
+  color: #ffd98a;
+}
+.chip--leaf {
+  color: var(--glowcap);
+}
+
+.chip--full {
+  animation: chipFull 0.34s ease-out;
+}
+
+@keyframes chipFull {
+  0% {
+    background: rgba(194, 64, 91, 0.8);
+  }
+  100% {
+    background: rgba(20, 19, 26, 0.62);
+  }
+}
+
+/* ---------- brood bar / wave pips ---------- */
+
+.nightbar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(var(--safe-t) + 56px * var(--hud-scale) + 50px);
+  width: min(70%, 320px);
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+
+.nightbar.on {
+  display: flex;
+}
+
+.broodbar {
+  width: 100%;
+  height: calc(12px * var(--hud-scale));
+  border-radius: 999px;
+  background: rgba(20, 19, 26, 0.66);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.broodbar__fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #79d07a, #b6e86b);
+  transition: width 0.18s linear;
+}
+
+.broodbar__fill.hurt {
+  background: linear-gradient(90deg, #e0a13c, var(--sugar));
+}
+.broodbar__fill.crit {
+  background: linear-gradient(90deg, #8a2039, var(--foe));
+}
+
+.wavepips {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  font-size: calc(12px * var(--hud-scale));
+  font-weight: 700;
+  opacity: 0.85;
+  text-shadow: 0 1px 2px #000;
+}
+
+.pip {
+  width: calc(9px * var(--hud-scale));
+  height: calc(9px * var(--hud-scale));
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.pip.done {
+  background: var(--foe);
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  position: absolute;
+  pointer-events: auto;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.btn--pause {
+  top: calc(var(--safe-t) + 56px * var(--hud-scale) + 8px);
+  right: calc(var(--safe-r) + 12px);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(20, 19, 26, 0.62);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  display: grid;
+  place-items: center;
+}
+
+.btn--action {
+  right: calc(var(--safe-r) + 20px);
+  bottom: calc(var(--safe-b) + 28px);
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(46, 111, 142, 0.34);
+  border: 3px solid rgba(155, 232, 107, 0.66);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+}
+
+.btn--action:disabled {
+  opacity: 0.28;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn--action span {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 2px 3px #000;
+}
+
+/* Desktop only: name the key, since there is no thumb resting on the button. */
+.btn--action::after {
+  content: 'Space';
+  position: absolute;
+  bottom: 9px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
+  text-shadow: 0 1px 2px #000;
+  display: none;
+}
+
+@media (pointer: fine) {
+  .btn--action::after {
+    display: block;
+  }
+
+  .btn--action span {
+    transform: translateY(-6px);
+  }
+}
+
+.btn--action .wipe {
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(rgba(0, 0, 0, 0.62) var(--wipe, 0turn), transparent 0);
+  z-index: 1;
+}
+
+.btn--action.press {
+  transform: scale(0.94);
+}
+
+/* ---------- joystick ---------- */
+
+.stick {
+  position: absolute;
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  background: rgba(20, 19, 26, 0.2);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.stick.on {
+  opacity: 1;
+  transition: opacity 0.08s ease;
+}
+
+.stick__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: rgba(245, 193, 71, 0.5);
+  border: 3px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- world-space labels ---------- */
+
+.labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.lbl {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-size: calc(13px * var(--hud-scale));
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 6px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  will-change: transform;
+}
+
+.lbl--locked {
+  color: rgba(255, 255, 255, 0.44);
+  font-weight: 700;
+  font-size: calc(12px * var(--hud-scale));
+}
+
+.lbl--cost {
+  color: var(--sugar);
+}
+
+.lbl__sub {
+  display: block;
+  font-size: calc(11px * var(--hud-scale));
+  font-weight: 700;
+  opacity: 0.72;
+  color: #fff;
+}
+
+.lbl--short {
+  color: var(--foe);
+}
+
+/* ---------- toast / night stamp ---------- */
+
+.toast {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: calc(var(--safe-b) + 150px);
+  transform: translateX(-50%);
+  max-width: 78%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(20, 19, 26, 0.86);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  font-size: calc(15px * var(--hud-scale));
+  font-weight: 700;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.toast.on {
+  opacity: 1;
+}
+
+.stamp {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%) scale(1.4);
+  font-family: var(--font-display);
+  font-size: calc(44px * var(--hud-scale));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow:
+    0 4px 0 var(--ink),
+    0 0 24px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  text-align: center;
+}
+
+.stamp.on {
+  animation: stampIn 1.6s cubic-bezier(0.16, 1.2, 0.3, 1) forwards;
+}
+
+@keyframes stampIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.4);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  76% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+}
+
+/* ---------- resolve tally ---------- */
+
+.tally {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  min-width: min(78%, 320px);
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #14131a;
+  border: 2px solid rgba(245, 193, 71, 0.55);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  /* Above the world-space label layer: the tally is the moment's only reading. */
+  z-index: 5;
+}
+
+.tally.on {
+  display: flex;
+  animation: tallyIn 0.34s cubic-bezier(0.16, 1.2, 0.3, 1);
+}
+
+@keyframes tallyIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.tally__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: calc(15px * var(--hud-scale));
+  font-weight: 700;
+}
+
+.tally__line b {
+  font-weight: 900;
+  color: var(--glowcap);
+}
+
+.tally__line--total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 2px solid rgba(255, 255, 255, 0.14);
+  font-family: var(--font-display);
+  font-size: calc(20px * var(--hud-scale));
+}
+
+.tally__line--total b {
+  color: var(--sugar);
+}
+
+/* ---------- damage numbers ---------- */
+
+.dmg {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: calc(13px * var(--hud-scale));
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.dmg--foe {
+  color: var(--sugar);
+}
+
+.dmg--friendly {
+  color: var(--foe);
+}
+
+/* ---------- onboarding trail ---------- */
+
+.trailhint {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--glowcap);
+  box-shadow: 0 0 8px rgba(155, 232, 107, 0.75);
+  pointer-events: none;
+}
+
+/* ---------- overlays ---------- */
+
+.sheet {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--safe-t) + 20px) 22px calc(var(--safe-b) + 20px);
+  background: rgba(12, 11, 17, 0.86);
+  backdrop-filter: blur(4px);
+}
+
+.sheet__card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  overflow-y: auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sheet h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--sugar);
+  text-shadow: 0 4px 0 var(--ink);
+}
+
+.sheet h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.sheet p {
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.86;
+}
+
+.sheet .tagline {
+  font-size: 15px;
+  opacity: 0.72;
+  margin-top: -8px;
+}
+
+.big {
+  display: block;
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: 14px;
+  border: 3px solid var(--sugar-deep);
+  background: var(--sugar);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.ghost {
+  display: block;
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 15px;
+}
+
+.row b {
+  font-weight: 900;
+  color: var(--sugar);
+}
+
+.row--tally b {
+  color: var(--glowcap);
+}
+
+.help {
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.6;
+  opacity: 0.84;
+}
+
+.help li {
+  margin-left: 18px;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 15px;
+  pointer-events: auto;
+}
+
+.setting input[type='range'] {
+  width: 128px;
+  accent-color: var(--sugar);
+}
+
+.switch {
+  min-width: 62px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-weight: 900;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.switch[aria-pressed='true'] {
+  background: var(--colony);
+  border-color: var(--glowcap);
+}
+
+/* ---------- debug ---------- */
+
+.debug {
+  position: absolute;
+  left: calc(var(--safe-l) + 10px);
+  bottom: calc(var(--safe-b) + 10px);
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre;
+  color: var(--glowcap);
+  pointer-events: none;
+}
+
+.cheats {
+  position: absolute;
+  right: calc(var(--safe-r) + 10px);
+  bottom: calc(var(--safe-b) + 130px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+  pointer-events: auto;
+}
+
+.cheats button {
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(0, 0, 0, 0.66);
+  color: #fff;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp.on {
+    animation-timing-function: linear;
+  }
+  .broodbar__fill {
+    transition: none;
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Crumbhold",
+  "short_name": "Crumbhold",
+  "description": "Haul the sugar by day. Hold the tunnels after dark.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#14131a",
+  "theme_color": "#22212b",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
