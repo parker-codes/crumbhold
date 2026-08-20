@@ -169,7 +169,7 @@ export const ECONOMY = {
    * rather than cutting build costs, so nights feel more rewarding instead of
    * structures feeling cheap.
    */
-  dropMultiplier: 1.3,
+  dropMultiplier: 1.4,
   mortarHpPerSugar: 8,
   aphidFloorCapT1: 6,
   aphidFloorCapT2: 8,

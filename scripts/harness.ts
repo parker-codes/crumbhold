@@ -1,5 +1,6 @@
 import { SIM_DT } from '../src/engine/loop';
-import { TIME } from '../src/game/balance';
+import { BUILD, TIME } from '../src/game/balance';
+import { SITES } from '../src/game/gallery';
 import { applyPurchase, glowcapCount, maxTier, structureAt } from '../src/game/state';
 import { Sim } from '../src/game/sim';
 import { step } from '../src/game/step';
@@ -153,6 +154,22 @@ function prebuildColony(sim: Sim, tier: number): void {
   sim.state.stats.sugarSpent = 0;
 }
 
+/**
+ * Every tier of every site, summed from the tables rather than quoted. Section
+ * 10.7 prints 6355, but its own breakdown counts three Spitter sites where
+ * section 7 lists four, so the printed figure is 250 light. Deriving it keeps
+ * the invariant honest when costs or sites change.
+ */
+function fullBuildCost(): number {
+  let total = 0;
+  for (const site of SITES) {
+    for (const row of BUILD[site.kind].tiers as readonly { cost: number }[]) {
+      total += row.cost;
+    }
+  }
+  return total;
+}
+
 function parseArgs(argv: string[]): {
   seed: number; seeds: number; nights: number; strategy: Strategy;
   quiet: boolean; invuln: boolean; prebuild: number;
@@ -211,7 +228,7 @@ function main(): void {
     `  mean sugar earned ${Math.round(mean)}`,
   );
   // Section 10.8: earnable sugar against the full build cost.
-  const fullBuild = 6355;
+  const fullBuild = fullBuildCost();
   const ceilings = results.map((r) => r.ceiling);
   const ceilingMean = ceilings.reduce((a, b) => a + b, 0) / ceilings.length;
   const convMean = results.reduce((a, r) => a + r.converted, 0) / results.length;
