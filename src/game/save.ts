@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   highContrast: false,
   nightBrightness: 0,
   damageNumbers: false,
+  haptics: true,
 };
 
 export function emptySave(): SaveFile {

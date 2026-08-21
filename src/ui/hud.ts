@@ -1,3 +1,4 @@
+import { haptic } from '../engine/haptics';
 import { STACK, TIME } from '../game/balance';
 import { capacityFor, tierOf } from '../game/state';
 import { actionCooldown, actionLabel, canEndDay, currentAction } from '../game/systems/actions';
@@ -63,6 +64,9 @@ export class Hud {
   private toastTimer = 0;
   private stampTimer = 0;
 
+  /** Mirrors the player's setting, read on the button press path. */
+  hapticsOn = true;
+
   onAction: (() => void) | null = null;
   onPause: (() => void) | null = null;
   /** Advance a read-and-continue step, or step past one that is stuck. */
@@ -123,6 +127,8 @@ export class Hud {
     this.actionBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       this.actionBtn.classList.add('press');
+      // The one control a thumb lands on without looking, so it answers back.
+      if (this.hapticsOn) haptic('tap');
       this.onAction?.();
     });
     const release = (): void => this.actionBtn.classList.remove('press');
@@ -277,7 +283,8 @@ export class Hud {
     this.tutorialChapter.textContent = step.chapter;
     this.tutorialCount.textContent = `${run.index + 1} / ${run.total}`;
     this.tutorialText.textContent = step.instruction;
-    this.tutorialDetail.textContent = step.detail;
+    this.tutorialDetail.textContent =
+      typeof step.detail === 'function' ? step.detail() : step.detail;
     // A step that waits on the player offers a way past it; one that only needs
     // reading offers the way forward.
     const waiting = !!step.done;

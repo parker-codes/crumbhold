@@ -1,3 +1,5 @@
+import { HAPTICS_SUPPORTED } from '../engine/haptics';
+import { isTouchInput } from '../engine/inputKind';
 import { BUILD, TIME } from '../game/balance';
 import { SITES } from '../game/gallery';
 import { glowcapCount, tierOf } from '../game/state';
@@ -148,6 +150,14 @@ export class Overlays {
       this.settings.damageNumbers = on;
       this.callbacks.onSettingChange({ damageNumbers: on });
     }));
+    // Hidden where the browser has no Vibration API, which includes every
+    // iPhone: a switch that does nothing is worse than no switch.
+    if (HAPTICS_SUPPORTED) {
+      wrap.appendChild(toggle('Vibration', this.settings.haptics, (on) => {
+        this.settings.haptics = on;
+        this.callbacks.onSettingChange({ haptics: on });
+      }));
+    }
     wrap.appendChild(toggle('Larger HUD', this.settings.hudScale > 1, (on) => {
       const scale = on ? 1.25 : 1;
       this.settings.hudScale = scale;
@@ -205,7 +215,7 @@ function biggestGap(sim: Sim): string | null {
  */
 function helpHtml(): string {
   const lines = [
-    'Drag the left side of the screen to walk. You attack automatically.',
+    'Drag anywhere on the screen to walk. You attack automatically.',
     'Stand on a pad to buy it. Walk away and your sugar stays on the pad.',
     'Carry honeydew to the Nectar Vat and leaf scraps to the Fungus Garden. Both pay you in sugar.',
     'Each day lasts 45 seconds \u2014 too short to do everything. Pick what matters.',
@@ -222,7 +232,7 @@ function helpHtml(): string {
 }
 
 function hasKeyboard(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: fine)').matches;
+  return !isTouchInput();
 }
 
 function row(label: string, value: string): string {

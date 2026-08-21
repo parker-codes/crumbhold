@@ -295,6 +295,11 @@ export interface Settings {
   highContrast: boolean;
   nightBrightness: number;
   damageNumbers: boolean;
+  /**
+   * Vibration on the few events worth feeling. Android only in practice: iOS
+   * Safari has no Vibration API, so the setting is hidden where it does nothing.
+   */
+  haptics: boolean;
 }
 
 export interface SaveFile {

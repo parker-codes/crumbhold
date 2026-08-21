@@ -1,3 +1,4 @@
+import { isTouchInput } from '../engine/inputKind';
 import { TIME } from './balance';
 import { BROOD_POS, ROOT_FRINGE, SITE_BY_ID, type SiteId } from './gallery';
 import { structureAt, tierOf } from './state';
@@ -28,8 +29,12 @@ export interface TutorialStep {
   chapter: string;
   /** What to do, in the imperative. One sentence. */
   instruction: string;
-  /** Why it matters, or the number behind it. One sentence. */
-  detail: string;
+  /**
+   * Why it matters, or the number behind it. One sentence. A function where the
+   * line depends on the device, so a phone is never told about a key it has not
+   * got.
+   */
+  detail: string | (() => string);
   /** Where the pheromone trail points. */
   target?: SiteId | TrailTarget;
   /**
@@ -59,7 +64,10 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'Move',
     instruction: 'Follow the green trail to the Aphid Pen.',
-    detail: 'You are the Warden. Drag the left side of the screen to walk, or use WASD. The green trail always points at your next job.',
+    detail: () =>
+      'You are the Warden. ' +
+      (isTouchInput() ? 'Drag anywhere to walk.' : 'Drag the floor, or use WASD, to walk.') +
+      ' The green trail always points at your next job.',
     target: 'aphidA',
     done: (sim) => atPad(sim, 'aphidA', 1.6),
   },

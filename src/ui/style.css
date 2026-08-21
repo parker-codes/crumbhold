@@ -515,11 +515,15 @@ body {
   touch-action: none;
 }
 
+/*
+ * 44px, not 40: that is Apple's minimum touch target and Android's is 48dp.
+ * The glyph inside stays the size it was — this buys thumb margin, not weight.
+ */
 .btn--pause {
   top: calc(var(--safe-t) + var(--band-h) + 10px);
   right: calc(var(--safe-r) + 12px);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--r-md);
   background: var(--plate);
   border: 1px solid var(--hairline);
@@ -535,8 +539,9 @@ body {
  */
 .btn--endday {
   top: calc(var(--safe-t) + var(--band-h) + 10px);
-  right: calc(var(--safe-r) + 60px);
-  height: 40px;
+  /* Clears the 44px Pause button at its 12px inset, and keeps the 8px gap. */
+  right: calc(var(--safe-r) + 64px);
+  height: 44px;
   padding: 0 12px;
   border-radius: var(--r-md);
   background: var(--plate);
@@ -621,7 +626,7 @@ body {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-/* Desktop only: name the key, since there is no thumb resting on the button. */
+/* Keyboard devices only: name the key, since no thumb rests on the button. */
 .btn--action::after {
   content: 'Space';
   position: absolute;
@@ -637,14 +642,18 @@ body {
   display: none;
 }
 
-@media (pointer: fine) {
-  .btn--action::after {
-    display: block;
-  }
+/*
+ * Gated on the last input the player actually used, not on `(pointer: fine)`.
+ * A touchscreen laptop reports a fine pointer, and it was being shown a key
+ * hint while someone played it with a thumb. `attachInputKind` publishes this
+ * attribute and rewrites it the moment the input changes.
+ */
+:root[data-input='keys'] .btn--action::after {
+  display: block;
+}
 
-  .btn--action span {
-    transform: translateY(-5px);
-  }
+:root[data-input='keys'] .btn--action span {
+  transform: translateY(-5px);
 }
 
 .btn--action .wipe {

@@ -1,4 +1,5 @@
 import { AudioBus } from '../engine/audio';
+import { haptic, type Haptic } from '../engine/haptics';
 import type { InputState } from '../engine/input';
 import { mulberry32, type Rng } from '../engine/rng';
 import { Pool } from '../engine/pool';
@@ -39,6 +40,25 @@ const noopHooks: SimHooks = {
 };
 
 /**
+ * Which cues reach the motor. Deliberately short: a hit, a kill and a pickup all
+ * happen several times a second at night, and a phone that never stops buzzing
+ * teaches nothing. What is left is a purchase, damage to the thing being
+ * defended, and the beats that open and close a night.
+ */
+const HAPTIC_BY_SOUND: Partial<Record<SoundName, Haptic>> = {
+  padComplete: 'thud',
+  chamberHit: 'thud',
+  chamberCritical: 'alert',
+  knockdown: 'alert',
+  revive: 'thud',
+  mount: 'thud',
+  nightStart: 'beat',
+  nightHeld: 'fanfare',
+  win: 'fanfare',
+  lose: 'toll',
+};
+
+/**
  * Owns run state and every mutable side channel the systems share. Systems are
  * plain functions over this object, run in the fixed order from section 16.
  */
@@ -69,6 +89,7 @@ export class Sim {
     highContrast: false,
     nightBrightness: 0,
     damageNumbers: false,
+    haptics: true,
   };
 
   /**
@@ -153,6 +174,8 @@ export class Sim {
 
   sound(name: SoundName, semitones = 0, gain = 1): void {
     this.audio.play(name, semitones, gain);
+    const buzz = HAPTIC_BY_SOUND[name];
+    if (buzz && this.settings.haptics) haptic(buzz);
   }
 
   markLightingDirty(): void {
