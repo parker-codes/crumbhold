@@ -16,9 +16,10 @@ const PROJECTILE_CAP = 130;
 
 const UP = new Vector3(1, 0, 0);
 
-/** Flat ellipse shadows: no blur, 18 percent alpha, offset down. */
+/** Flat ellipse shadows: no blur, offset down, alpha set by the theme rig. */
 export class ShadowLayer {
   readonly mesh: InstancedMesh;
+  private readonly material: MeshBasicMaterial;
   private count = 0;
   private readonly matrix = new Matrix4();
   private readonly pos = new Vector3();
@@ -26,17 +27,17 @@ export class ShadowLayer {
   private readonly scale = new Vector3();
 
   constructor() {
-    this.mesh = new InstancedMesh(
-      new CircleGeometry(1, 18),
-      new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false }),
-      SHADOW_CAP,
-    );
+    this.material = new MeshBasicMaterial({
+      color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false,
+    });
+    this.mesh = new InstancedMesh(new CircleGeometry(1, 18), this.material, SHADOW_CAP);
     this.mesh.frustumCulled = false;
     this.mesh.count = 0;
   }
 
-  begin(): void {
+  begin(alpha: number): void {
     this.count = 0;
+    this.material.opacity = alpha;
   }
 
   add(x: number, y: number, radius: number): void {

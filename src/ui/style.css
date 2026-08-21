@@ -1,4 +1,11 @@
-/* Crumbhold shell styles. Palette tokens mirror balance/palette.ts. */
+/*
+ * Crumbhold shell styles.
+ *
+ * The interface tokens below are only defaults: `Palette.publishCss` overwrites
+ * --text, --plate, --hairline, --rule, --vignette and --band-0..5 every time the
+ * day/night mix moves, so the HUD cools with the world instead of sitting on top
+ * of it. Anything hard-coded here is a value that must not shift under pressure.
+ */
 
 :root {
   --ink: #22212b;
@@ -11,9 +18,26 @@
   --resin: #b4713a;
   --glowcap: #9be86b;
   --glowworm: #ffb347;
-  --band-soil: #4a3f38;
-  --band-sky-day: #7fb4d4;
-  --band-sky-night: #1b2036;
+  --honeydew: #ffd98a;
+
+  /* Published by the theme; these are the day values, so the first frame is
+     already correct rather than flashing a default. */
+  --text: #f7f0e3;
+  --text-dim: #c3b39a;
+  --text-faint: #8d7f6a;
+  --plate: rgba(27, 22, 16, 0.66);
+  --plate-solid: #1b1610;
+  --hairline: rgba(199, 169, 124, 0.22);
+  --hairline-soft: rgba(199, 169, 124, 0.11);
+  --rule: rgba(224, 189, 134, 0.44);
+  --vignette: rgba(21, 16, 10, 0.5);
+  --vignette-edge: rgba(21, 16, 10, 0.75);
+  --band-0: #9fd0e8;
+  --band-1: #7fb4d4;
+  --band-2: #6b9fc4;
+  --band-3: #4a6f8a;
+  --band-4: #33485a;
+  --band-5: #241c14;
 
   --hud-scale: 1;
   --safe-t: env(safe-area-inset-top, 0px);
@@ -26,6 +50,12 @@
      here; until then these fall back to a heavy rounded face and a tabular sans. */
   --font-display: 'Rowdies', 'Trebuchet MS', 'Verdana', system-ui, sans-serif;
   --font-ui: 'Chivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* One radius scale. Sharp beats pill: a hairline-ruled rectangle reads as
+     built, a rounded capsule reads as a stock mobile control. */
+  --r-sm: 3px;
+  --r-md: 6px;
+  --r-lg: 10px;
 }
 
 * {
@@ -37,7 +67,7 @@
 html,
 body {
   overscroll-behavior: none;
-  background: #14131a;
+  background: #0b0a10;
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -48,7 +78,7 @@ body {
   font-family: var(--font-ui);
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
-  color: #fff;
+  color: var(--text);
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   user-select: none;
@@ -71,15 +101,46 @@ body {
   -webkit-user-drag: none;
 }
 
+/*
+ * Frame vignette. The renderer cannot cheaply darken the edges of an
+ * orthographic top-down view, and it does not need to: this costs one composited
+ * layer and gives the frame the value structure the flat floor never had.
+ */
+#vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(
+      120% 98% at 50% 46%,
+      transparent 54%,
+      var(--vignette) 88%,
+      var(--vignette-edge) 100%
+    ),
+    linear-gradient(to bottom, var(--vignette) 0%, transparent 14%),
+    linear-gradient(to top, var(--vignette) 0%, transparent 20%);
+}
+
 #hud,
 #overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 #hud {
   font-size: calc(15px * var(--hud-scale));
+}
+
+/* A shared micro-label: uppercase, tracked out, never competing with a value. */
+.cap {
+  font-size: calc(9.5px * var(--hud-scale));
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 /* ---------- Surface Band ---------- */
@@ -89,8 +150,10 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: calc(56px * var(--hud-scale));
+  height: calc(58px * var(--hud-scale));
   padding-top: var(--safe-t);
+  /* The band is the horizon: a hairline under it stops it floating. */
+  box-shadow: inset 0 -1px 0 var(--hairline);
 }
 
 .band svg {
@@ -99,29 +162,57 @@ body {
   height: 100%;
 }
 
+.band__sky stop:nth-child(1) {
+  stop-color: var(--band-0);
+}
+.band__sky stop:nth-child(2) {
+  stop-color: var(--band-1);
+}
+.band__sky stop:nth-child(3) {
+  stop-color: var(--band-2);
+}
+.band__sky stop:nth-child(4) {
+  stop-color: var(--band-3);
+}
+.band__sky stop:nth-child(5) {
+  stop-color: var(--band-4);
+}
+.band__sky stop:nth-child(6) {
+  stop-color: var(--band-5);
+}
+
 /* ---------- counters ---------- */
 
 .counters {
   position: absolute;
   left: calc(var(--safe-l) + 12px);
-  top: calc(var(--safe-t) + 56px * var(--hud-scale) + 8px);
+  top: calc(var(--safe-t) + 58px * var(--hud-scale) + 10px);
   display: flex;
-  gap: 8px;
-  align-items: flex-start;
+  align-items: stretch;
+  border-radius: var(--r-md);
+  background: var(--plate);
+  border: 1px solid var(--hairline);
+  box-shadow: inset 0 1px 0 var(--hairline-soft);
+  overflow: hidden;
 }
 
+/*
+ * One ledger, divided by hairlines, rather than a row of separate pills. The
+ * counters are read together, so they are set together.
+ */
 .chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px 5px 7px;
-  border-radius: 999px;
-  background: rgba(20, 19, 26, 0.62);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 11px;
   font-weight: 900;
-  font-size: calc(20px * var(--hud-scale));
+  font-size: calc(19px * var(--hud-scale));
   line-height: 1;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
+}
+
+.chip + .chip {
+  border-left: 1px solid var(--hairline);
 }
 
 .chip.hidden {
@@ -129,22 +220,23 @@ body {
 }
 
 .chip__glyph {
-  width: calc(18px * var(--hud-scale));
-  height: calc(18px * var(--hud-scale));
+  width: calc(15px * var(--hud-scale));
+  height: calc(15px * var(--hud-scale));
   flex: none;
 }
 
+/* The denominator is context, not a number the player acts on. */
 .chip__cap {
   font-size: calc(12px * var(--hud-scale));
-  opacity: 0.66;
   font-weight: 700;
+  color: var(--text-faint);
 }
 
 .chip--sugar {
   color: var(--sugar);
 }
 .chip--honeydew {
-  color: #ffd98a;
+  color: var(--honeydew);
 }
 .chip--leaf {
   color: var(--glowcap);
@@ -156,10 +248,10 @@ body {
 
 @keyframes chipFull {
   0% {
-    background: rgba(194, 64, 91, 0.8);
+    background: rgba(194, 64, 91, 0.85);
   }
   100% {
-    background: rgba(20, 19, 26, 0.62);
+    background: transparent;
   }
 }
 
@@ -169,11 +261,11 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: calc(var(--safe-t) + 56px * var(--hud-scale) + 50px);
-  width: min(70%, 320px);
+  top: calc(var(--safe-t) + 58px * var(--hud-scale) + 14px);
+  width: min(72%, 340px);
   display: none;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -183,42 +275,42 @@ body {
 
 .broodbar {
   width: 100%;
-  height: calc(12px * var(--hud-scale));
-  border-radius: 999px;
-  background: rgba(20, 19, 26, 0.66);
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  height: calc(7px * var(--hud-scale));
+  border-radius: var(--r-sm);
+  background: var(--plate);
+  border: 1px solid var(--hairline);
   overflow: hidden;
 }
 
 .broodbar__fill {
   height: 100%;
   width: 100%;
-  background: linear-gradient(90deg, #79d07a, #b6e86b);
+  background: linear-gradient(180deg, #b6e86b, #6cb35f);
   transition: width 0.18s linear;
 }
 
 .broodbar__fill.hurt {
-  background: linear-gradient(90deg, #e0a13c, var(--sugar));
+  background: linear-gradient(180deg, var(--sugar), #c98a24);
 }
 .broodbar__fill.crit {
-  background: linear-gradient(90deg, #8a2039, var(--foe));
+  background: linear-gradient(180deg, #e05b74, var(--foe));
 }
 
 .wavepips {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
-  font-size: calc(12px * var(--hud-scale));
+  font-size: calc(9.5px * var(--hud-scale));
   font-weight: 700;
-  opacity: 0.85;
-  text-shadow: 0 1px 2px #000;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
 .pip {
-  width: calc(9px * var(--hud-scale));
-  height: calc(9px * var(--hud-scale));
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.22);
+  width: calc(10px * var(--hud-scale));
+  height: calc(3px * var(--hud-scale));
+  background: var(--hairline);
 }
 
 .pip.done {
@@ -239,61 +331,71 @@ body {
 }
 
 .btn--pause {
-  top: calc(var(--safe-t) + 56px * var(--hud-scale) + 8px);
+  top: calc(var(--safe-t) + 58px * var(--hud-scale) + 10px);
   right: calc(var(--safe-r) + 12px);
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(20, 19, 26, 0.62);
-  border: 2px solid rgba(255, 255, 255, 0.14);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--plate);
+  border: 1px solid var(--hairline);
+  box-shadow: inset 0 1px 0 var(--hairline-soft);
   display: grid;
   place-items: center;
+  color: var(--text-dim);
 }
 
 .btn--action {
   right: calc(var(--safe-r) + 20px);
-  bottom: calc(var(--safe-b) + 28px);
-  width: 88px;
-  height: 88px;
+  bottom: calc(var(--safe-b) + 30px);
+  width: 86px;
+  height: 86px;
   border-radius: 50%;
-  background: rgba(46, 111, 142, 0.34);
-  border: 3px solid rgba(155, 232, 107, 0.66);
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  /* The one round control in the interface, because it is the one control a
+     thumb lands on without looking. */
+  background:
+    radial-gradient(circle at 50% 34%, rgba(155, 232, 107, 0.2), transparent 68%),
+    var(--plate);
+  border: 1px solid rgba(155, 232, 107, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 22px rgba(155, 232, 107, 0.12);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   display: grid;
   place-items: center;
-  backdrop-filter: blur(2px);
   overflow: hidden;
+  transition: transform 0.08s ease;
 }
 
 .btn--action:disabled {
-  opacity: 0.28;
-  border-color: rgba(255, 255, 255, 0.3);
+  opacity: 0.3;
+  border-color: var(--hairline);
+  box-shadow: none;
 }
 
 .btn--action span {
   position: relative;
   z-index: 2;
-  text-shadow: 0 2px 3px #000;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 /* Desktop only: name the key, since there is no thumb resting on the button. */
 .btn--action::after {
   content: 'Space';
   position: absolute;
-  bottom: 9px;
+  bottom: 11px;
   left: 0;
   right: 0;
   z-index: 2;
-  font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 8.5px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  opacity: 0.5;
-  text-shadow: 0 1px 2px #000;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
   display: none;
 }
 
@@ -303,14 +405,14 @@ body {
   }
 
   .btn--action span {
-    transform: translateY(-6px);
+    transform: translateY(-5px);
   }
 }
 
 .btn--action .wipe {
   position: absolute;
   inset: 0;
-  background: conic-gradient(rgba(0, 0, 0, 0.62) var(--wipe, 0turn), transparent 0);
+  background: conic-gradient(rgba(0, 0, 0, 0.66) var(--wipe, 0turn), transparent 0);
   z-index: 1;
 }
 
@@ -322,12 +424,12 @@ body {
 
 .stick {
   position: absolute;
-  width: 132px;
-  height: 132px;
-  margin: -66px 0 0 -66px;
+  width: 128px;
+  height: 128px;
+  margin: -64px 0 0 -64px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  background: rgba(20, 19, 26, 0.2);
+  border: 1px solid var(--hairline);
+  background: radial-gradient(circle, transparent 52%, var(--plate) 100%);
   opacity: 0;
   transition: opacity 0.4s ease;
 }
@@ -341,12 +443,12 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 54px;
-  height: 54px;
-  margin: -27px 0 0 -27px;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
   border-radius: 50%;
-  background: rgba(245, 193, 71, 0.5);
-  border: 3px solid rgba(255, 255, 255, 0.5);
+  background: radial-gradient(circle at 50% 36%, rgba(245, 193, 71, 0.5), rgba(245, 193, 71, 0.16));
+  border: 1px solid rgba(245, 193, 71, 0.6);
 }
 
 /* ---------- world-space labels ---------- */
@@ -357,41 +459,86 @@ body {
   overflow: hidden;
 }
 
+/*
+ * A pad label is a plate, not floating text. Naked text over a busy floor is
+ * unreadable at speed, and a shadow heavy enough to fix that reads as a bug.
+ */
+/*
+ * Block, not flex: the HUD toggles `style.display` on these nodes to show and
+ * hide them, so any display the stylesheet sets here is overwritten. The
+ * children stack on their own instead.
+ */
 .lbl {
   position: absolute;
   transform: translate(-50%, -50%);
   white-space: nowrap;
-  font-size: calc(13px * var(--hud-scale));
+  padding: 4px 8px 5px;
+  border-radius: var(--r-sm);
+  background: var(--plate);
+  border: 1px solid var(--hairline);
+  border-top-color: var(--rule);
+  font-size: calc(14px * var(--hud-scale));
   font-weight: 900;
-  line-height: 1.15;
+  line-height: 1.1;
   text-align: center;
-  text-shadow:
-    0 2px 0 rgba(0, 0, 0, 0.55),
-    0 0 6px rgba(0, 0, 0, 0.5);
-  color: #fff;
+  color: var(--text);
   will-change: transform;
 }
 
-.lbl--locked {
-  color: rgba(255, 255, 255, 0.44);
+.lbl__name {
+  display: block;
+  font-size: calc(10px * var(--hud-scale));
   font-weight: 700;
-  font-size: calc(12px * var(--hud-scale));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
 }
 
-.lbl--cost {
+.lbl__value {
+  display: block;
+  font-size: calc(15px * var(--hud-scale));
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.lbl--locked {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-faint);
+}
+
+.lbl--locked .lbl__name {
+  color: var(--text-faint);
+}
+
+.lbl--cost .lbl__value {
   color: var(--sugar);
+}
+
+.lbl--short {
+  border-color: rgba(194, 64, 91, 0.6);
+  border-top-color: var(--foe);
+}
+
+.lbl--short .lbl__value {
+  color: var(--foe);
 }
 
 .lbl__sub {
   display: block;
-  font-size: calc(11px * var(--hud-scale));
+  font-size: calc(10px * var(--hud-scale));
   font-weight: 700;
-  opacity: 0.72;
-  color: #fff;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
 }
 
-.lbl--short {
-  color: var(--foe);
+/* The off-screen threat chevrons reuse .lbl for positioning only. */
+.lbl--chevron {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: calc(15px * var(--hud-scale));
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
 }
 
 /* ---------- toast / night stamp ---------- */
@@ -400,16 +547,18 @@ body {
   position: absolute;
   z-index: 6;
   left: 50%;
-  bottom: calc(var(--safe-b) + 150px);
+  bottom: calc(var(--safe-b) + 152px);
   transform: translateX(-50%);
   max-width: 78%;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(20, 19, 26, 0.86);
-  border: 2px solid rgba(255, 255, 255, 0.14);
-  font-size: calc(15px * var(--hud-scale));
+  padding: 9px 15px;
+  border-radius: var(--r-md);
+  background: var(--plate-solid);
+  border: 1px solid var(--hairline);
+  border-top-color: var(--rule);
+  font-size: calc(14px * var(--hud-scale));
   font-weight: 700;
   text-align: center;
+  color: var(--text);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -422,16 +571,14 @@ body {
   position: absolute;
   z-index: 6;
   left: 50%;
-  top: 42%;
+  top: 40%;
   transform: translate(-50%, -50%) scale(1.4);
   font-family: var(--font-display);
-  font-size: calc(44px * var(--hud-scale));
+  font-size: calc(46px * var(--hud-scale));
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #fff;
-  text-shadow:
-    0 4px 0 var(--ink),
-    0 0 24px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.01em;
+  color: var(--text);
+  text-shadow: 0 2px 26px rgba(0, 0, 0, 0.9);
   opacity: 0;
   text-align: center;
 }
@@ -466,14 +613,15 @@ body {
   top: 52%;
   transform: translate(-50%, -50%);
   min-width: min(78%, 320px);
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: #14131a;
-  border: 2px solid rgba(245, 193, 71, 0.55);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--plate-solid);
+  border: 1px solid var(--hairline);
+  border-top-color: var(--rule);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
   display: none;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   /* Above the world-space label layer: the tally is the moment's only reading. */
   z-index: 5;
 }
@@ -497,25 +645,33 @@ body {
 .tally__line {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 14px;
-  font-size: calc(15px * var(--hud-scale));
+  font-size: calc(10px * var(--hud-scale));
   font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 .tally__line b {
   font-weight: 900;
+  font-size: calc(15px * var(--hud-scale));
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--glowcap);
 }
 
 .tally__line--total {
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 2px solid rgba(255, 255, 255, 0.14);
-  font-family: var(--font-display);
-  font-size: calc(20px * var(--hud-scale));
+  margin-top: 5px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+  color: var(--text-dim);
 }
 
 .tally__line--total b {
+  font-family: var(--font-display);
+  font-size: calc(22px * var(--hud-scale));
   color: var(--sugar);
 }
 
@@ -526,8 +682,8 @@ body {
   transform: translate(-50%, -50%);
   font-size: calc(13px * var(--hud-scale));
   font-weight: 900;
-  color: #fff;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.7);
+  color: var(--text);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
   pointer-events: none;
 }
 
@@ -543,12 +699,12 @@ body {
 
 .trailhint {
   position: absolute;
-  width: 9px;
-  height: 9px;
-  margin: -4.5px 0 0 -4.5px;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
   border-radius: 50%;
   background: var(--glowcap);
-  box-shadow: 0 0 8px rgba(155, 232, 107, 0.75);
+  box-shadow: 0 0 10px rgba(155, 232, 107, 0.8);
   pointer-events: none;
 }
 
@@ -561,13 +717,12 @@ body {
   display: grid;
   place-items: center;
   padding: calc(var(--safe-t) + 20px) 22px calc(var(--safe-b) + 20px);
-  background: rgba(12, 11, 17, 0.86);
-  backdrop-filter: blur(4px);
+  background: rgba(8, 7, 12, 0.9);
 }
 
 .sheet__card {
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   max-height: 100%;
   overflow-y: auto;
   text-align: center;
@@ -579,42 +734,49 @@ body {
 .sheet h1 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 44px;
+  font-size: 42px;
   line-height: 1;
+  letter-spacing: 0.01em;
   color: var(--sugar);
-  text-shadow: 0 4px 0 var(--ink);
 }
 
 .sheet h2 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1.1;
 }
 
 .sheet p {
-  font-size: 15px;
-  line-height: 1.5;
-  opacity: 0.86;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-dim);
 }
 
+/*
+ * Sentence case, not tracked-out caps. Tracking works on a two-word label and
+ * falls apart on a full sentence, which wraps and stops reading as one line.
+ */
 .sheet .tagline {
-  font-size: 15px;
-  opacity: 0.72;
-  margin-top: -8px;
+  margin-top: -6px;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  color: var(--text-faint);
 }
 
 .big {
   display: block;
   width: 100%;
   padding: 15px 20px;
-  border-radius: 14px;
-  border: 3px solid var(--sugar-deep);
-  background: var(--sugar);
+  border-radius: var(--r-md);
+  border: 1px solid var(--sugar-deep);
+  background: linear-gradient(180deg, #f8cd63, var(--sugar));
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   cursor: pointer;
   pointer-events: auto;
 }
@@ -622,13 +784,15 @@ body {
 .ghost {
   display: block;
   width: 100%;
-  padding: 12px 18px;
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  font-size: 15px;
+  padding: 13px 18px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+  background: var(--plate);
+  color: var(--text);
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
   pointer-events: auto;
 }
@@ -636,22 +800,29 @@ body {
 .rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   text-align: left;
+  border-top: 1px solid var(--hairline);
 }
 
 .row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.055);
-  font-size: 15px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 .row b {
   font-weight: 900;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--sugar);
 }
 
@@ -661,13 +832,17 @@ body {
 
 .help {
   text-align: left;
-  font-size: 15px;
-  line-height: 1.6;
-  opacity: 0.84;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-dim);
 }
 
 .help li {
   margin-left: 18px;
+}
+
+.help b {
+  color: var(--text);
 }
 
 .setting {
@@ -675,10 +850,13 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.055);
-  font-size: 15px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
   pointer-events: auto;
 }
 
@@ -688,20 +866,23 @@ body {
 }
 
 .switch {
-  min-width: 62px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.26);
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  min-width: 58px;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--hairline);
+  background: var(--plate);
+  color: var(--text-dim);
   font-weight: 900;
-  font-size: 13px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
 .switch[aria-pressed='true'] {
-  background: var(--colony);
-  border-color: var(--glowcap);
+  background: rgba(46, 111, 142, 0.4);
+  border-color: rgba(155, 232, 107, 0.6);
+  color: var(--text);
 }
 
 /* ---------- debug ---------- */
@@ -711,8 +892,9 @@ body {
   left: calc(var(--safe-l) + 10px);
   bottom: calc(var(--safe-b) + 10px);
   padding: 7px 9px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.6);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.66);
+  border: 1px solid var(--hairline);
   font-size: 11px;
   line-height: 1.45;
   white-space: pre;
@@ -726,19 +908,20 @@ body {
   bottom: calc(var(--safe-b) + 130px);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   align-items: flex-end;
   pointer-events: auto;
 }
 
 .cheats button {
   padding: 5px 8px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(0, 0, 0, 0.66);
-  color: #fff;
+  letter-spacing: 0.06em;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--hairline);
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--text-dim);
   cursor: pointer;
 }
 

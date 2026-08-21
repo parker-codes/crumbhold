@@ -6,6 +6,7 @@ import { CreatureLayer } from './creatures';
 import {
   BEETLE_SHAPE, INVADER_SHAPES, MAJOR_SHAPE, WARDEN_SHAPE,
 } from './creatureShapes';
+import { Atmosphere } from './atmosphere';
 import { EffectLayer, ItemLayer, PropLayer, ShadowLayer } from './props';
 import { FloorLayer } from './floor';
 import { Lighting } from './lighting';
@@ -29,6 +30,7 @@ export class View {
   private readonly items = new ItemLayer();
   private readonly effects = new EffectLayer();
   private readonly props = new PropLayer();
+  private readonly atmosphere = new Atmosphere();
   /** Top of each carry column in world space, for the HUD count badges. */
   readonly columnTops = [
     { x: 0, y: 0, z: 0, count: 0 },
@@ -49,6 +51,7 @@ export class View {
       this.creatures.group,
       this.items.group,
       this.effects.group,
+      this.atmosphere.points,
     );
   }
 
@@ -62,6 +65,9 @@ export class View {
 
     this.stage.applyPalette(sim.nightMix, sim.settings.nightBrightness);
     const palette = this.stage.palette;
+    // One theme drives the world and the HUD: when the shaft closes, the panels
+    // and the vignette cool with it.
+    palette.publishCss(document.documentElement);
 
     const shakeAmount = sim.reducedMotion ? 0 : sim.shake;
     const shakeX = (Math.random() - 0.5) * shakeAmount * 2;
@@ -73,16 +79,17 @@ export class View {
 
     this.floor.update(palette);
     this.lighting.update(palette, sim.nightMix, sim.shaftT, frameDt, sim.quality);
+    this.atmosphere.update(palette, sim.nightMix, frameDt, sim.quality);
     if (sim.lightingDirty) {
       this.lighting.rebuild(st.structures);
       sim.lightingDirty = false;
     }
     this.structures.sync(st.structures);
-    this.structures.update(st.structures, palette, sim.reducedMotion);
+    this.structures.update(st.structures, palette, sim.nightMix, sim.reducedMotion);
     this.pads.update(st, palette);
     this.props.update(st, palette, sim.nightMix);
 
-    this.shadows.begin();
+    this.shadows.begin(palette.rig.blobAlpha);
     this.creatures.begin();
     this.items.begin();
     this.effects.begin();

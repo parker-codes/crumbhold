@@ -87,6 +87,14 @@ Two smaller notes:
   three Spitter Post sites where section 7 lists four, so the printed figure is
   250 light. The harness derives the total from the cost tables instead, which
   comes to 6605 and cannot drift when a cost or a site changes.
+- **One theme drives the world and the HUD.** `render/palette.ts` carries three
+  things per phase: the world tones, a five-light rig (hemisphere, ambient, key,
+  cool fill, rim, plus tone-mapping exposure), and the interface tokens. The
+  phase cross-fade interpolates all three, then publishes the interface half onto
+  the document root as custom properties, so `style.css` reads `--text`,
+  `--plate`, `--hairline` and the six surface-band sky stops from the same source
+  the renderer reads. When the shaft closes, the panels cool with it. Adding a
+  third palette means adding one object, not editing two files that must agree.
 - The display and UI faces are **Rowdies** and **Chivo** per section 12, declared
   in `src/ui/style.css` with heavy rounded and tabular fallbacks. Drop the
   subsetted woff2 files in and add the `@font-face` rules to pick them up; no
@@ -99,8 +107,8 @@ src/
   engine/   loop, input, audio, rng, ease, pool, spatial, viewport
   game/     balance.ts (every tunable), gallery.ts (fixed sites and lanes),
             waves.ts, state.ts, sim.ts, step.ts, save.ts, systems/
-  render/   scene, floor, lighting, creatures, structuresView, padsView,
-            props, palette, view
+  render/   scene, floor, lighting, atmosphere, creatures, structuresView,
+            padsView, props, palette, view
   ui/       hud, overlays, onboarding, debug, style.css
 scripts/    harness.ts, bot.ts   headless balance tooling, run by Bun directly
 tests/      vitest, no DOM

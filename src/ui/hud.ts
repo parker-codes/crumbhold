@@ -123,7 +123,7 @@ export class Hud {
     root.appendChild(this.debug);
 
     for (let i = 0; i < 12; i++) {
-      const chevron = el('div', 'lbl lbl--short');
+      const chevron = el('div', 'lbl lbl--chevron');
       chevron.textContent = '▲';
       chevron.style.display = 'none';
       this.labelLayer.appendChild(chevron);
@@ -136,7 +136,7 @@ export class Hud {
       this.damageNodes.push(node);
     }
     for (let i = 0; i < 2; i++) {
-      const badge = el('div', 'lbl lbl--cost');
+      const badge = el('div', 'lbl lbl--cost lbl--chevron');
       badge.style.display = 'none';
       this.labelLayer.appendChild(badge);
       this.stackBadges.push(badge);
@@ -299,7 +299,9 @@ export class Hud {
       } else {
         const glyph = other === 'honeydew' ? DROP_GLYPH : LEAF_GLYPH;
         this.otherChip.className = `chip chip--${other}`;
-        this.otherChip.innerHTML = `${glyph}<span>${amount}/${capacityFor(st, other)}</span>`;
+        this.otherChip.innerHTML =
+          `${glyph}<span class="chip__value">${amount}</span>` +
+          `<span class="chip__cap">/${capacityFor(st, other)}</span>`;
       }
     }
   }
@@ -322,7 +324,7 @@ export class Hud {
       for (let i = 0; i < total; i++) {
         html += `<div class="pip${i < current ? ' done' : ''}"></div>`;
       }
-      html += `<span>Wave ${Math.max(1, current)} of ${total}</span>`;
+      html += `<span>Wave ${Math.max(1, current)} / ${total}</span>`;
       this.wavePips.innerHTML = html;
     }
   }
@@ -409,28 +411,37 @@ interface PadText {
   html: string;
 }
 
+/**
+ * Two levels, always in the same order: the name in tracked-out micro type, and
+ * beneath it the number the player acts on. A cost has to be findable without
+ * reading the name first.
+ */
 function padText(sim: Sim, pad: Pad): PadText {
   const st = sim.state;
   const owned = tierOf(st, pad.id);
   if (pad.kind === 'repair') {
-    return { key: 'mortar', cls: '', html: 'Mortar' };
+    return { key: 'mortar', cls: '', html: padName('Mortar') };
   }
   const structure = st.structures.find((s) => s.site === pad.id);
   if (structure && structure.hp <= 0) {
-    return { key: 'breached', cls: 'lbl--short', html: `${pad.label}<span class="lbl__sub">Breached</span>` };
+    return {
+      key: 'breached',
+      cls: 'lbl--short',
+      html: `${padName(pad.label)}<span class="lbl__value">Breached</span>`,
+    };
   }
   if (pad.state === 'locked') {
     return {
       key: `locked${pad.unlockBroodTier}`,
       cls: 'lbl--locked',
-      html: `${pad.label}<span class="lbl__sub">Brood ${pad.unlockBroodTier}</span>`,
+      html: `${padName(pad.label)}<span class="lbl__sub">Brood ${pad.unlockBroodTier}</span>`,
     };
   }
   if (pad.state === 'complete' || pad.targetTier === 0) {
     return {
       key: `max${owned}`,
       cls: 'lbl--locked',
-      html: `${pad.label} ${romanTier(owned)}`,
+      html: `${padName(pad.label)}<span class="lbl__sub">${romanTier(owned)}</span>`,
     };
   }
   const remaining = Math.max(0, Math.ceil(pad.cost - pad.paid));
@@ -440,8 +451,12 @@ function padText(sim: Sim, pad: Pad): PadText {
   return {
     key: `${pad.state}${owned}${remaining}${short ? 'p' : ''}`,
     cls: 'lbl--cost',
-    html: `${pad.label}${suffix} ${remaining}${sub}`,
+    html: `${padName(pad.label + suffix)}<span class="lbl__value">${remaining}</span>${sub}`,
   };
+}
+
+function padName(text: string): string {
+  return `<span class="lbl__name">${text}</span>`;
 }
 
 function romanTier(tier: number): string {
@@ -455,7 +470,6 @@ function romanTier(tier: number): string {
  */
 class SurfaceBand {
   readonly element: HTMLElement;
-  private readonly sky: SVGRectElement;
   private readonly sun: SVGGElement;
   private readonly moon: SVGGElement;
   private readonly cells: SVGCircleElement[] = [];
@@ -467,19 +481,44 @@ class SurfaceBand {
     svg.setAttribute('viewBox', '0 0 360 56');
     svg.setAttribute('preserveAspectRatio', 'none');
 
-    this.sky = document.createElementNS(SVG, 'rect');
-    this.sky.setAttribute('x', '0');
-    this.sky.setAttribute('y', '0');
-    this.sky.setAttribute('width', '360');
-    this.sky.setAttribute('height', '30');
-    svg.appendChild(this.sky);
+    // Six stops rather than one fill: a flat rectangle of sky is the difference
+    // between a strip of colour and a horizon. The stop colours come from the
+    // theme, so the band cross-fades with the gallery below it.
+    const defs = document.createElementNS(SVG, 'defs');
+    const gradient = document.createElementNS(SVG, 'linearGradient');
+    gradient.setAttribute('id', 'bandSky');
+    gradient.setAttribute('x1', '0');
+    gradient.setAttribute('y1', '0');
+    gradient.setAttribute('x2', '0');
+    gradient.setAttribute('y2', '1');
+    gradient.setAttribute('class', 'band__sky');
+    for (const at of ['0', '0.3', '0.5', '0.68', '0.85', '1']) {
+      const stop = document.createElementNS(SVG, 'stop');
+      stop.setAttribute('offset', at);
+      gradient.appendChild(stop);
+    }
+    defs.appendChild(gradient);
+    svg.appendChild(defs);
+
+    const sky = document.createElementNS(SVG, 'rect');
+    sky.setAttribute('x', '0');
+    sky.setAttribute('y', '0');
+    sky.setAttribute('width', '360');
+    sky.setAttribute('height', '30');
+    sky.setAttribute('fill', 'url(#bandSky)');
+    svg.appendChild(sky);
 
     // Sun and moon travel above the soil line; only one is ever visible.
     this.sun = document.createElementNS(SVG, 'g');
-    this.sun.innerHTML = `<circle r="7" fill="#f5c147" stroke="#22212b" stroke-width="2"/>`;
+    this.sun.innerHTML =
+      `<circle r="11" fill="#f5c147" opacity="0.16"/>` +
+      `<circle r="6" fill="#ffe6a8"/>`;
     svg.appendChild(this.sun);
     this.moon = document.createElementNS(SVG, 'g');
-    this.moon.innerHTML = `<circle r="6.5" fill="#dfe4f5" stroke="#22212b" stroke-width="2"/><circle cx="3" cy="-2" r="4.6" fill="#1b2036"/>`;
+    this.moon.innerHTML =
+      `<circle r="10" fill="#c8d4ff" opacity="0.14"/>` +
+      `<circle r="5.6" fill="#dfe4f5"/>` +
+      `<circle cx="2.6" cy="-1.8" r="4.2" fill="var(--band-1)"/>`;
     svg.appendChild(this.moon);
 
     const soil = document.createElementNS(SVG, 'path');
@@ -487,18 +526,18 @@ class SurfaceBand {
       'd',
       'M0 30 L34 30 L38 26 L52 26 L56 30 L360 30 L360 56 L0 56 Z',
     );
-    soil.setAttribute('fill', '#4a3f38');
+    soil.setAttribute('fill', 'var(--soil)');
     svg.appendChild(soil);
 
     // The surface entrance, from which the daylight shaft descends.
     const hole = document.createElementNS(SVG, 'path');
     hole.setAttribute('d', 'M38 26 L52 26 L50 42 L40 42 Z');
-    hole.setAttribute('fill', '#22212b');
+    hole.setAttribute('fill', 'var(--soil-deep)');
     svg.appendChild(hole);
 
     const grass = document.createElementNS(SVG, 'g');
     grass.setAttribute('stroke', '#5f7a45');
-    grass.setAttribute('stroke-width', '2');
+    grass.setAttribute('stroke-width', '1.6');
     grass.setAttribute('stroke-linecap', 'round');
     grass.innerHTML =
       `<path d="M14 30 C12 24 10 22 8 19"/><path d="M20 30 C20 25 21 22 23 18"/>` +
@@ -511,9 +550,8 @@ class SurfaceBand {
     pebble.setAttribute('cy', '28');
     pebble.setAttribute('rx', '13');
     pebble.setAttribute('ry', '6');
-    pebble.setAttribute('fill', '#8e97a8');
-    pebble.setAttribute('stroke', '#22212b');
-    pebble.setAttribute('stroke-width', '2');
+    pebble.setAttribute('fill', 'var(--pebble)');
+    pebble.setAttribute('opacity', '0.8');
     svg.appendChild(pebble);
 
     // Twelve brood cells set into the soil, one per night held.
@@ -522,9 +560,9 @@ class SurfaceBand {
       cell.setAttribute('cx', String(96 + i * 21));
       cell.setAttribute('cy', '43');
       cell.setAttribute('r', '6.4');
-      cell.setAttribute('fill', '#2b241f');
-      cell.setAttribute('stroke', '#6a5a4d');
-      cell.setAttribute('stroke-width', '1.6');
+      cell.setAttribute('fill', 'var(--soil-deep)');
+      cell.setAttribute('stroke', 'var(--rule)');
+      cell.setAttribute('stroke-width', '1');
       svg.appendChild(cell);
       this.cells.push(cell);
     }
@@ -535,7 +573,6 @@ class SurfaceBand {
   update(sim: Sim): void {
     const st = sim.state;
     const night = st.phase === 'night';
-    this.sky.setAttribute('fill', night ? '#1b2036' : '#7fb4d4');
 
     // By day the sun tracks the day timer; at night the moon tracks the raid.
     let t: number;
@@ -557,8 +594,8 @@ class SurfaceBand {
       this.filled = held;
       for (let i = 0; i < this.cells.length; i++) {
         const on = i < held;
-        this.cells[i].setAttribute('fill', on ? '#f5c147' : '#2b241f');
-        this.cells[i].setAttribute('stroke', on ? '#c48a16' : '#6a5a4d');
+        this.cells[i].setAttribute('fill', on ? '#f5c147' : 'var(--soil-deep)');
+        this.cells[i].setAttribute('stroke', on ? '#c48a16' : 'var(--rule)');
       }
     }
   }

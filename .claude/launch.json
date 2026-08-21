@@ -6,10 +6,13 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": [
         "run",
-        "dev"
+        "dev",
+        "--port",
+        "5199",
+        "--strictPort"
       ],
-      "port": 5173,
-      "autoPort": true
+      "port": 5199,
+      "autoPort": false
     }
   ]
 }
