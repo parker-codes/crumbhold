@@ -7,3 +7,6 @@ dist/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Vercel CLI local state.
+.vercel

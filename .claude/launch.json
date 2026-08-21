@@ -10,6 +10,17 @@
       ],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "crumbhold-preview",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--port",
+        "4173"
+      ],
+      "port": 4173
     }
   ]
 }
