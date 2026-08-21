@@ -147,6 +147,12 @@ export interface Pad {
   tickAccum: number;
   ringFlash: number;
   shortfallFlash: number;
+  /**
+   * Spending is deaf until this time. Set the moment a purchase completes, so
+   * standing still for one more beat cannot start paying into the next tier
+   * before the player has had a chance to step off.
+   */
+  payLockUntil: number;
 }
 
 export interface Pickup {
@@ -279,6 +285,12 @@ export interface RunState {
 
 export interface Settings {
   audio: boolean;
+  /**
+   * The sustained ambient bed, separate from the action sounds and off by
+   * default. It is a drone by design, and a drone is not what most people want
+   * running under a twelve minute session.
+   */
+  music: boolean;
   hudScale: number;
   highContrast: boolean;
   nightBrightness: number;

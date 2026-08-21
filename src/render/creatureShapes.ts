@@ -53,12 +53,23 @@ export interface Blueprint {
 const foe = FIXED.foe;
 const foeDark = FIXED.foeDark;
 
-/** Three overlapping capsules: head, thorax, abdomen. The generic ant body. */
+/**
+ * Head, thorax, waist, gaster. Four parts, not three: the pinched waist is the
+ * single feature that makes a silhouette read as an ant rather than a grub, and
+ * the sizes have to differ — a head, a thorax and an abdomen at the same width
+ * is a caterpillar.
+ */
 function antBody(scale: number, color: number, dark: number): SegmentDef[] {
+  const k = scale;
   return [
-    { f: 13 * scale, y: 10 * scale, l: 7 * scale, h: 6.5 * scale, w: 6.5 * scale, color },
-    { f: 1 * scale, y: 10 * scale, l: 7 * scale, h: 7 * scale, w: 7 * scale, color: dark },
-    { f: -13 * scale, y: 11 * scale, l: 11 * scale, h: 9 * scale, w: 9 * scale, color },
+    // Head: smallest, widest across rather than along.
+    { f: 15 * k, y: 9.5 * k, l: 5.5 * k, h: 5.5 * k, w: 6.5 * k, color },
+    // Thorax: narrow, and where the legs hang from.
+    { f: 4 * k, y: 10 * k, l: 6 * k, h: 6 * k, w: 5.6 * k, color: dark },
+    // Waist: the pinch. Small enough to read as a gap at play distance.
+    { f: -5 * k, y: 9 * k, l: 2.6 * k, h: 2.6 * k, w: 2.6 * k, color: dark },
+    // Gaster: the mass, and a teardrop rather than a ball.
+    { f: -15 * k, y: 10.5 * k, l: 10 * k, h: 8 * k, w: 8.4 * k, color },
   ];
 }
 
@@ -188,37 +199,53 @@ export const INVADER_SHAPES: Record<InvaderKind, Blueprint> = {
  * The Warden: bulkier than a worker, oversized head, visible mandibles, colony
  * teal across the thorax, and a facing wedge so her heading is never in doubt.
  */
+/**
+ * The Warden. Same four-part ant plan as everything else, at the largest scale,
+ * with the colony teal on the thorax as her mark.
+ *
+ * The old shape was three near-cubes with three long cones off the front: two
+ * pale ones and a gold one riding above them. At play distance that read as a
+ * lump with spines, and nobody could say what the gold cone was meant to be. The
+ * mandibles are short and dark now, where jaws sit on a real ant, and her mark
+ * is a teal saddle across the thorax — the place a marking would actually be,
+ * and readable from straight above, which is where the camera is.
+ */
 export const WARDEN_SHAPE: Blueprint = {
   segments: [
-    { f: 17, y: 14, l: 12, h: 11, w: 12, color: 0x7d6f78 },
-    { f: 0, y: 15, l: 11, h: 11, w: 12, color: FIXED.colony },
-    { f: -19, y: 16, l: 15, h: 13, w: 13, color: 0x7d6f78 },
+    { f: 23, y: 13, l: 8.5, h: 8, w: 10, color: 0x8b7d84 },
+    { f: 7, y: 14, l: 9, h: 9, w: 8.6, color: 0x6f6470 },
+    // Her mark: a teal saddle over the thorax, not a spike off the nose.
+    { f: 7, y: 19.5, l: 7, h: 3.4, w: 9.2, color: 0x3f93b8 },
+    { f: -6, y: 12.5, l: 4, h: 4, w: 4, color: 0x5c5360 },
+    { f: -22, y: 14.5, l: 14, h: 11.5, w: 12, color: 0x8b7d84 },
   ],
   spikes: [
-    { f: 28, z: -6, y: 12, len: 14, radius: 3.6, yaw: -0.42, color: FIXED.pale },
-    { f: 28, z: 6, y: 12, len: 14, radius: 3.6, yaw: 0.42, color: FIXED.pale },
-    { f: 30, z: 0, y: 20, len: 16, radius: 5, yaw: 0, color: FIXED.sugar },
+    // Jaws: short, dark, and at head height. Not tusks.
+    { f: 30, z: -4.5, y: 12, len: 8, radius: 2.6, yaw: -0.55, color: 0x4a434c },
+    { f: 30, z: 4.5, y: 12, len: 8, radius: 2.6, yaw: 0.55, color: 0x4a434c },
   ],
   limbColor: 0x4a434c,
-  legs: { attach: [10, -2, -13], spread: 11, length: 22, thickness: 2.8, swing: 0.5, lift: 4 },
-  antennae: { f: 22, length: 20, spread: 0.5 },
+  legs: { attach: [12, 4, -6], spread: 10, length: 21, thickness: 2.8, swing: 0.5, lift: 4 },
+  antennae: { f: 27, length: 22, spread: 0.62 },
   shadow: 24,
 };
 
-/** Allied majors: the Warden's silhouette at worker scale, teal-marked. */
+/** Allied soldiers: the Warden's silhouette at worker scale, teal-marked. */
 export const MAJOR_SHAPE: Blueprint = {
   segments: [
-    { f: 11, y: 9, l: 7, h: 6.5, w: 7, color: 0x6f636c },
-    { f: 0, y: 10, l: 7, h: 7, w: 7.5, color: FIXED.colony },
-    { f: -12, y: 10, l: 10, h: 8, w: 8, color: 0x6f636c },
+    { f: 15, y: 9, l: 5.5, h: 5.5, w: 6.5, color: 0x6f636c },
+    { f: 4, y: 9.5, l: 6, h: 6, w: 5.6, color: 0x5b5261 },
+    { f: 4, y: 13.2, l: 4.6, h: 2.4, w: 6.2, color: 0x3f93b8 },
+    { f: -5, y: 8.5, l: 2.6, h: 2.6, w: 2.6, color: 0x5b5261 },
+    { f: -15, y: 10, l: 9.5, h: 7.6, w: 8, color: 0x6f636c },
   ],
   spikes: [
-    { f: 18, z: -3.5, y: 9, len: 8, radius: 2.4, yaw: -0.45, color: FIXED.pale },
-    { f: 18, z: 3.5, y: 9, len: 8, radius: 2.4, yaw: 0.45, color: FIXED.pale },
+    { f: 20, z: -3, y: 8.5, len: 5.5, radius: 1.9, yaw: -0.55, color: 0x4a434c },
+    { f: 20, z: 3, y: 8.5, len: 5.5, radius: 1.9, yaw: 0.55, color: 0x4a434c },
   ],
   limbColor: 0x4a434c,
-  legs: { attach: [7, -1, -9], spread: 8, length: 16, thickness: 2.2, swing: 0.5, lift: 3 },
-  antennae: { f: 16, length: 14, spread: 0.5 },
+  legs: { attach: [8, 3, -5], spread: 7.5, length: 16, thickness: 2.2, swing: 0.5, lift: 3 },
+  antennae: { f: 18, length: 15, spread: 0.6 },
   shadow: 16,
 };
 

@@ -8,7 +8,12 @@ import { FIXED } from './palette';
 import type { Palette } from './palette';
 import type { Structure } from '../game/types';
 
-const GLOWCAP_RADIUS = 180;
+/**
+ * Tight enough that each structure keeps its own pool. At the old radius every
+ * pool in a built-out chamber overlapped into one grey wash, which said nothing
+ * about which buildings were carrying the light.
+ */
+const GLOWCAP_RADIUS = 150;
 const GLOWWORM_RADIUS = 220;
 const SHAFT_WIDTH = 260;
 
@@ -36,8 +41,11 @@ export class Lighting {
   constructor() {
     const glow = new CanvasTexture(buildRadialCanvas());
 
+    // The shaft gets its own map. A radial glow stretched down a 2400 unit plane
+    // fades along the length, which reads as a blot; a bar gradient keeps the
+    // falloff across the width where the light actually falls off.
     const shaftMat = new MeshBasicMaterial({
-      map: glow,
+      map: new CanvasTexture(buildShaftCanvas()),
       transparent: true,
       blending: AdditiveBlending,
       depthWrite: false,
@@ -53,7 +61,7 @@ export class Lighting {
       new PlaneGeometry(SHAFT_WIDTH * 0.8, 620),
       shaftMat.clone(),
     );
-    this.shaftColumn.material.opacity = 0.09;
+    this.shaftColumn.material.opacity = 0.2;
     this.shaftColumn.position.set(TUNNEL_MOUTHS[0].x, 300, TUNNEL_MOUTHS[0].y + 300);
     this.group.add(this.shaftColumn);
 
@@ -62,7 +70,7 @@ export class Lighting {
       transparent: true,
       blending: AdditiveBlending,
       depthWrite: false,
-      opacity: 0.2,
+      opacity: 0.34,
     });
     this.capPools = new InstancedMesh(new CircleGeometry(1, 28), poolMat, CAPS.lightPools);
     this.capPools.frustumCulled = false;
@@ -100,7 +108,7 @@ export class Lighting {
       if (merged.length >= CAPS.lightPools) break;
       let absorbed = false;
       for (const m of merged) {
-        if (Math.hypot(m.x - p.x, m.y - p.y) < m.r * 0.35) {
+        if (Math.hypot(m.x - p.x, m.y - p.y) < m.r * 0.5) {
           absorbed = true;
           break;
         }
@@ -132,19 +140,21 @@ export class Lighting {
     this.shaftFloor.position.x = x;
     this.shaftFloor.position.z = WORLD.height * 0.5;
     this.shaftFloor.material.color.copy(palette.shaft);
-    this.shaftFloor.material.opacity = 0.16 * dayness;
+    // The one real light source by day, and the clock: worth being the brightest
+    // thing in the frame rather than a wash the player never notices.
+    this.shaftFloor.material.opacity = 0.42 * dayness;
     this.shaftFloor.visible = dayness > 0.02;
 
     this.shaftColumn.position.x = x;
     this.shaftColumn.material.color.copy(palette.shaft);
-    this.shaftColumn.material.opacity = 0.1 * dayness;
+    this.shaftColumn.material.opacity = 0.22 * dayness;
     this.shaftColumn.visible = this.shaftFloor.visible;
 
     // Night: glowcaps and the two glowworm lanterns take over, worms flickering
     // gently on a four second cycle.
     this.flicker += dt;
     const worm = 0.86 + Math.sin(this.flicker * (Math.PI * 2) / 4) * 0.14;
-    const capOpacity = 0.2 * nightMix * quality;
+    const capOpacity = 0.34 * nightMix * quality;
     (this.capPools.material as MeshBasicMaterial).opacity = capOpacity;
     (this.wormPools.material as MeshBasicMaterial).opacity = 0.22 * nightMix * worm;
     this.capPools.visible = nightMix > 0.02 && this.poolCount > 0;
@@ -154,6 +164,37 @@ export class Lighting {
   get activePools(): number {
     return this.poolCount + GLOWWORMS.length;
   }
+}
+
+/**
+ * A bar of light: bright core, soft shoulders, and a short fade at each end so
+ * the shaft does not stop with a hard line at the plane edge.
+ */
+function buildShaftCanvas(): HTMLCanvasElement {
+  const w = 128;
+  const h = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  const across = ctx.createLinearGradient(0, 0, w, 0);
+  across.addColorStop(0, 'rgba(255,255,255,0)');
+  across.addColorStop(0.26, 'rgba(255,255,255,0.32)');
+  across.addColorStop(0.5, 'rgba(255,255,255,1)');
+  across.addColorStop(0.74, 'rgba(255,255,255,0.32)');
+  across.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = across;
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'destination-in';
+  const along = ctx.createLinearGradient(0, 0, 0, h);
+  along.addColorStop(0, 'rgba(255,255,255,0)');
+  along.addColorStop(0.14, 'rgba(255,255,255,1)');
+  along.addColorStop(0.86, 'rgba(255,255,255,1)');
+  along.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = along;
+  ctx.fillRect(0, 0, w, h);
+  return canvas;
 }
 
 function buildRadialCanvas(): HTMLCanvasElement {

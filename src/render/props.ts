@@ -16,9 +16,10 @@ const PROJECTILE_CAP = 130;
 
 const UP = new Vector3(1, 0, 0);
 
-/** Flat ellipse shadows: no blur, 18 percent alpha, offset down. */
+/** Flat ellipse shadows: no blur, offset down, alpha set by the theme rig. */
 export class ShadowLayer {
   readonly mesh: InstancedMesh;
+  private readonly material: MeshBasicMaterial;
   private count = 0;
   private readonly matrix = new Matrix4();
   private readonly pos = new Vector3();
@@ -26,17 +27,17 @@ export class ShadowLayer {
   private readonly scale = new Vector3();
 
   constructor() {
-    this.mesh = new InstancedMesh(
-      new CircleGeometry(1, 18),
-      new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false }),
-      SHADOW_CAP,
-    );
+    this.material = new MeshBasicMaterial({
+      color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false,
+    });
+    this.mesh = new InstancedMesh(new CircleGeometry(1, 18), this.material, SHADOW_CAP);
     this.mesh.frustumCulled = false;
     this.mesh.count = 0;
   }
 
-  begin(): void {
+  begin(alpha: number): void {
     this.count = 0;
+    this.material.opacity = alpha;
   }
 
   add(x: number, y: number, radius: number): void {
@@ -73,12 +74,17 @@ export class ItemLayer {
   private readonly scale = new Vector3();
 
   constructor() {
+    // A tall prism rather than a regular octahedron: a sugar grain is monoclinic
+    // and reads as a shard, where an even eight-sided die reads as a gem.
     const crystal = new OctahedronGeometry(1, 0);
+    crystal.scale(0.74, 1.42, 0.74);
     this.sugar = instanced(crystal, new MeshLambertMaterial({
-      color: FIXED.sugar, emissive: FIXED.sugarDeep, emissiveIntensity: 0.35,
+      color: FIXED.sugarCrystal, emissive: FIXED.sugarCrystal, emissiveIntensity: 0.16,
     }), ITEM_CAP);
+    // The gold stays on the outline, so a crystal still belongs to the economy
+    // without being the same colour as a droplet of honeydew.
     this.sugarOutline = instanced(crystal, new MeshLambertMaterial({
-      color: FIXED.sugarDeep, side: BackSide,
+      color: FIXED.sugarFacet, side: BackSide,
     }), ITEM_CAP);
     this.honeydew = instanced(new SphereGeometry(1, 8, 6), new MeshLambertMaterial({
       color: FIXED.honeydew, transparent: true, opacity: 0.85,

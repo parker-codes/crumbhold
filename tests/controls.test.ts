@@ -4,6 +4,8 @@ import { axesFromKeys, isMovementKey } from '../src/engine/input';
 import { WARDEN } from '../src/game/balance';
 import { Sim } from '../src/game/sim';
 import { step } from '../src/game/step';
+import { canEndDay, currentAction } from '../src/game/systems/actions';
+import { readyEarly } from '../src/game/systems/phase';
 
 const axis = { x: 0, y: 0 };
 
@@ -130,12 +132,37 @@ describe('input reaches the Warden', () => {
     expect(sim.state.warden.pos.x).toBeCloseTo(start.x, 3);
   });
 
-  it('delivers the action button press for exactly one step', () => {
+  it('offers no action button on foot before anything is unlocked', () => {
     const sim = new Sim(1);
+    // Ending the day used to live here, which meant the button was never idle
+    // and the player could not tell an unlocked action from a live one.
+    expect(currentAction(sim)).toBe('none');
     sim.input.actionPressed = true;
     step(sim, SIM_DT);
-    // Ready ends the day early and banks the bonus on the coming night.
+    expect(sim.state.phase).toBe('day');
+  });
+
+  it('ends the day early and banks the bonus on the coming night', () => {
+    const sim = new Sim(1);
+    readyEarly(sim);
     expect(sim.state.earlyReady).toBe(true);
     expect(sim.state.phase).toBe('night');
+  });
+
+  it('still offers End day once the beetle is owned', () => {
+    const sim = new Sim(1);
+    expect(canEndDay(sim)).toBe(true);
+    // Regression: under the old priority the button showed Drum for the rest of
+    // the run the moment a Paddock was bought, so buying one silently removed
+    // the early-end bonus from every remaining day.
+    sim.state.beetle.owned = true;
+    expect(currentAction(sim)).toBe('drum');
+    expect(canEndDay(sim)).toBe(true);
+  });
+
+  it('offers no End day at night', () => {
+    const sim = new Sim(1);
+    sim.setPhase('night', 0);
+    expect(canEndDay(sim)).toBe(false);
   });
 });

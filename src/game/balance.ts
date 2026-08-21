@@ -150,6 +150,9 @@ export const STACK = {
   nightPickupLifetime: 25,
   pickupFlashLast: 5,
   conversionItemsPerSecond: 2,
+  /** Spending pauses this long after a purchase completes, so a player can
+   *  step off a pad without buying into the next tier by accident. */
+  payGrace: 1,
   capacity: { sugar: 25, honeydew: 6, leaf: 5 },
   /** Settle spring for a landing item: stiff and well damped, 0.12 s overshoot. */
   springStiffness: 340,

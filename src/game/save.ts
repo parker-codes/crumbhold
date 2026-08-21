@@ -5,6 +5,7 @@ const VERSION = 1 as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   audio: true,
+  music: false,
   hudScale: 1,
   highContrast: false,
   nightBrightness: 0,

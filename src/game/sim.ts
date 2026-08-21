@@ -9,6 +9,7 @@ import {
   type InvaderKind, type SoundName,
 } from './balance';
 import { createRun, syncGlowcaps } from './state';
+import type { Tutorial } from './tutorial';
 import type {
   Invader, Major, Particle, Phase, Pickup, Projectile, ResourceKind,
   RunState, Settings, Structure,
@@ -63,17 +64,27 @@ export class Sim {
   };
   settings: Settings = {
     audio: true,
+    music: false,
     hudScale: 1,
     highContrast: false,
     nightBrightness: 0,
     damageNumbers: false,
   };
 
+  /**
+   * Set while a guided tutorial is running. The systems below are untouched by
+   * it: the tutorial drives the same pads, spawn queue and carry cap the real
+   * game does, so it can never demonstrate something the game will not do.
+   */
+  tutorial: Tutorial | null = null;
+
   reducedMotion = false;
   /** Debug cheat and harness switch: nothing friendly can be lost. */
   invulnerable = false;
   /** Set the first time the Mortar Pile is used, which retires its trail hint. */
   mortarUsed = false;
+  /** Rate limit for the "sugar is full" conversion hint. */
+  nextFullHintAt = 0;
   /** 1 = full detail, 0.5 = degraded after sustained slow frames. */
   quality = 1;
 

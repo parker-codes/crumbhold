@@ -1,6 +1,6 @@
 import {
-  AmbientLight, Color, DirectionalLight, OrthographicCamera, Scene,
-  Vector2, Vector3, WebGLRenderer,
+  AmbientLight, Color, DirectionalLight, HemisphereLight, NeutralToneMapping,
+  OrthographicCamera, PCFShadowMap, Scene, Vector2, Vector3, WebGLRenderer,
 } from 'three';
 import { WORLD } from '../game/balance';
 import type { ViewportSize } from '../engine/viewport';
@@ -17,17 +17,29 @@ import { Palette } from './palette';
  */
 const TILT = 0.22;
 const CAMERA_DISTANCE = 3200;
+/** How far the key light sits from the look target. Sets the shadow depth range. */
+const KEY_DISTANCE = 2400;
+/**
+ * The shadow frustum covers more ground than the view, because an oblique light
+ * throws shadows in from off-screen structures.
+ */
+const SHADOW_MARGIN = 1.45;
 
 export class Stage {
   readonly renderer: WebGLRenderer;
   readonly scene = new Scene();
   readonly camera: OrthographicCamera;
   readonly palette = new Palette();
+  /** False on hardware that cannot afford a shadow pass. */
+  readonly shadows: boolean;
 
-  private readonly ambient = new AmbientLight(0xffffff, 1);
-  private readonly sun = new DirectionalLight(0xffffff, 1.1);
+  private readonly hemi = new HemisphereLight(0xffffff, 0x000000, 0.4);
+  private readonly ambient = new AmbientLight(0xffffff, 0.2);
+  private readonly key = new DirectionalLight(0xffffff, 1.1);
+  private readonly fill = new DirectionalLight(0xffffff, 0.3);
+  private readonly rim = new DirectionalLight(0xffffff, 0.2);
   private readonly lookTarget = new Vector3();
-  private readonly sunColor = new Color();
+  private readonly scratch = new Color();
   /** Half-extents of the current frustum in world units. */
   halfW = 1;
   halfH = 1;
@@ -40,14 +52,42 @@ export class Stage {
       powerPreference: 'high-performance',
       alpha: false,
     });
+    // Neutral, not filmic: this palette is authored, not photographed. ACES
+    // drains exactly the accents the player reads under pressure — sugar yellow
+    // and foe red — while Neutral only rolls off the highlights, so a key light
+    // strong enough to shape a wall still cannot clip a crystal to flat white.
+    this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.setClearColor(0x14131a, 1);
+
+    this.shadows = affordsShadows();
+    if (this.shadows) {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = PCFShadowMap;
+    }
+
     this.camera = new OrthographicCamera(-1, 1, 1, -1, 0.5, 12000);
     // World -Z is screen up, so the north tunnel is at the top of the screen.
     // A vertical `up` would be almost parallel to the view axis at this tilt.
     this.camera.up.set(0, 0, -1);
-    this.scene.add(this.ambient);
-    this.sun.position.set(-0.4, 1, 0.45).multiplyScalar(1000);
-    this.scene.add(this.sun);
+
+    this.key.castShadow = this.shadows;
+    if (this.shadows) {
+      const shadow = this.key.shadow;
+      const size = mapSize();
+      shadow.mapSize.set(size, size);
+      shadow.camera.near = 200;
+      shadow.camera.far = KEY_DISTANCE * 2;
+      // Tuned for a world measured in thousands of units: `normalBias` is world
+      // space, so the value that works at metre scale leaves peter-panning here.
+      shadow.bias = -0.0006;
+      shadow.normalBias = 3;
+    }
+
+    this.scene.add(
+      this.hemi, this.ambient,
+      this.key, this.key.target,
+      this.fill, this.rim,
+    );
   }
 
   resize(size: ViewportSize): void {
@@ -70,6 +110,14 @@ export class Stage {
     cam.top = halfH;
     cam.bottom = -halfH;
     cam.updateProjectionMatrix();
+    if (!this.shadows) return;
+    const span = Math.max(halfW, halfH) * SHADOW_MARGIN;
+    const shadow = this.key.shadow.camera;
+    shadow.left = -span;
+    shadow.right = span;
+    shadow.top = span;
+    shadow.bottom = -span;
+    shadow.updateProjectionMatrix();
   }
 
   /** Points the camera at a world position, with shake applied in view space. */
@@ -84,20 +132,46 @@ export class Stage {
       ty + Math.sin(TILT) * CAMERA_DISTANCE,
     );
     this.camera.lookAt(this.lookTarget);
+    // Only the key travels with the camera, because only the key casts: its
+    // shadow frustum is tight around the view rather than covering the whole
+    // gallery. Fill and rim are pure directions and stay put.
+    const rig = this.palette.rig;
+    this.key.target.position.set(tx, 0, ty);
+    setFromAzEl(this.key.position, tx, ty, rig.keyAz, rig.keyEl, KEY_DISTANCE);
   }
 
-  /** Applies the current palette to global lighting and the fog. */
+  /** Applies the current palette to the light rig and the background. */
   applyPalette(nightMix: number, brightness: number): void {
     const p = this.palette;
     p.update(nightMix, brightness);
-    // Ambient carries almost all of the light; the directional pass only shapes
-    // the structure faces so the fake dimension reads.
-    this.ambient.intensity = p.ambient * (1.02 - nightMix * 0.06);
-    this.sun.intensity = 0.42 * (1 - nightMix * 0.55);
-    this.sunColor.copy(dayLight).lerp(nightLight, nightMix);
-    this.sun.color.copy(this.sunColor);
-    bgScratch.copy(p.floor).multiplyScalar(0.42);
-    this.renderer.setClearColor(bgScratch, 1);
+    const rig = p.rig;
+
+    this.hemi.color.setHex(rig.hemiSky);
+    this.hemi.groundColor.setHex(rig.hemiGround);
+    this.hemi.intensity = rig.hemiInt;
+    this.ambient.color.setHex(rig.ambColor);
+    this.ambient.intensity = rig.ambInt;
+    this.key.color.setHex(rig.keyColor);
+    this.key.intensity = rig.keyInt;
+    this.fill.color.setHex(rig.fillColor);
+    this.fill.intensity = rig.fillInt;
+    this.rim.color.setHex(rig.rimColor);
+    this.rim.intensity = rig.rimInt;
+    this.renderer.toneMappingExposure = rig.exposure;
+
+    // A directional light is a direction, and its default target is the origin,
+    // so these positions ARE the directions. Setting them relative to the camera
+    // would swing the fill around the gallery as the Warden walks.
+    // Fill comes from the opposite side and lower down: the warm key and the cool
+    // fill are what make a grey wall read as two planes instead of one.
+    setFromAzEl(this.fill.position, 0, 0, rig.keyAz + Math.PI, rig.keyEl * 0.55, KEY_DISTANCE);
+    // Rim sits behind the subject relative to the camera, which looks from +Z.
+    setFromAzEl(this.rim.position, 0, 0, -Math.PI / 2, 0.22, KEY_DISTANCE);
+
+    // Off-world is the haze tone, so the gallery reads as sitting inside earth
+    // rather than floating on a backdrop.
+    this.scratch.copy(p.haze).multiplyScalar(0.7);
+    this.renderer.setClearColor(this.scratch, 1);
   }
 
   render(): void {
@@ -114,8 +188,28 @@ export class Stage {
   }
 }
 
+/** Places a light at an azimuth and elevation around a floor position. */
+function setFromAzEl(
+  out: Vector3, tx: number, ty: number, az: number, el: number, distance: number,
+): void {
+  const horizontal = Math.cos(el) * distance;
+  out.set(tx + Math.cos(az) * horizontal, Math.sin(el) * distance, ty + Math.sin(az) * horizontal);
+}
+
+/**
+ * Shadows are decided once, not by the degrade ladder: toggling `castShadow`
+ * recompiles every material, and a mid-raid recompile hitches worse than the
+ * shadow pass ever costs.
+ */
+function affordsShadows(): boolean {
+  const cores = navigator.hardwareConcurrency ?? 4;
+  const small = Math.min(window.screen.width, window.screen.height) < 480;
+  return cores >= 4 && !small;
+}
+
+function mapSize(): number {
+  return Math.min(window.screen.width, window.screen.height) < 900 ? 1024 : 2048;
+}
+
 const projectScratch = new Vector3();
 const sizeScratch = new Vector2();
-const bgScratch = new Color();
-const dayLight = new Color(0xfff3c4);
-const nightLight = new Color(0xa9c0ff);

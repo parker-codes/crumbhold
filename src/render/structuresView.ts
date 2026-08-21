@@ -1,7 +1,7 @@
 import {
-  BackSide, BoxGeometry, Color, CylinderGeometry, Group, InstancedMesh, Matrix4,
-  Mesh, MeshBasicMaterial, MeshLambertMaterial, Quaternion, SphereGeometry,
-  Vector3,
+  BackSide, BoxGeometry, BufferAttribute, Color, CylinderGeometry, Group,
+  InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial,
+  Quaternion, SphereGeometry, Vector3,
 } from 'three';
 import { easeOutBack } from '../engine/ease';
 import { FX, type BuildableKind } from '../game/balance';
@@ -133,13 +133,45 @@ interface Built {
   kind: BuildableKind;
 }
 
-/** Structures carry a 6 unit ink outline. Outlines are the identity of the look. */
-const OUTLINE_UNITS = 6;
+/**
+ * Structures carry an ink outline. Outlines are the identity of the look, but a
+ * fixed width in world units is a thick slab around a 22 unit sugar cube and a
+ * hairline around a 190 unit barricade, so it scales with the piece instead.
+ */
+const OUTLINE_FRACTION = 0.055;
+const OUTLINE_MIN = 1.6;
+const OUTLINE_MAX = 5;
+
+/**
+ * Two gradients baked into the shared box's vertex colours. The vertical one
+ * lightens the top of a piece and darkens its base, which grounds masonry
+ * against the floor for free. The diagonal one varies the top face across its
+ * width, because a near-top-down camera shows mostly top faces and a flat fill
+ * there is what made the old structures read as stickers.
+ *
+ * One geometry, no extra draw call, and it survives the tone cross-fade because
+ * it multiplies the material colour rather than replacing it.
+ */
+function gradedBox(): BoxGeometry {
+  const geo = new BoxGeometry(1, 1, 1);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    const top = pos.getY(i) > 0;
+    const across = (pos.getX(i) + pos.getZ(i)) * 0.5; // -0.5 to 0.5
+    const shade = top ? 1.12 + across * 0.14 : 0.82;
+    colors[i * 3] = shade;
+    colors[i * 3 + 1] = shade;
+    colors[i * 3 + 2] = shade;
+  }
+  geo.setAttribute('color', new BufferAttribute(colors, 3));
+  return geo;
+}
 
 export class StructureLayer {
   readonly group = new Group();
   private readonly built = new Map<number, Built>();
-  private readonly boxGeo = new BoxGeometry(1, 1, 1);
+  private readonly boxGeo = gradedBox();
   private readonly outlineMat = new MeshBasicMaterial({ color: FIXED.ink, side: BackSide });
   private readonly caps: InstancedMesh;
   private readonly stems: InstancedMesh;
@@ -191,17 +223,23 @@ export class StructureLayer {
       const h = piece.h * HEIGHT_SCALE;
       const y = piece.y * HEIGHT_SCALE + h / 2;
 
+      const grow = Math.min(
+        OUTLINE_MAX,
+        Math.max(OUTLINE_MIN, Math.min(piece.w, piece.d) * OUTLINE_FRACTION),
+      );
       const outline = new Mesh(this.boxGeo, this.outlineMat);
-      outline.scale.set(piece.w + OUTLINE_UNITS * 2, h + OUTLINE_UNITS, piece.d + OUTLINE_UNITS * 2);
+      outline.scale.set(piece.w + grow * 2, h + grow, piece.d + grow * 2);
       outline.position.set(piece.dx, y, piece.dz);
       if (piece.yaw) outline.rotation.y = piece.yaw;
       group.add(outline);
 
-      const mat = new MeshLambertMaterial();
+      const mat = new MeshLambertMaterial({ vertexColors: true });
       const mesh = new Mesh(this.boxGeo, mat);
       mesh.scale.set(piece.w, h, piece.d);
       mesh.position.set(piece.dx, y, piece.dz);
       if (piece.yaw) mesh.rotation.y = piece.yaw;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       group.add(mesh);
       meshes.push({ mesh, tone: piece.tone });
     }
@@ -212,8 +250,11 @@ export class StructureLayer {
   update(
     structures: readonly Structure[],
     palette: Palette,
+    nightMix: number,
     reducedMotion: boolean,
   ): void {
+    const capMat = this.caps.material as MeshLambertMaterial;
+    capMat.emissiveIntensity = 0.3 + palette.rig.glow * 0.75;
     this.capCount = 0;
     for (const s of structures) {
       const built = this.built.get(s.id);
@@ -230,9 +271,16 @@ export class StructureLayer {
       const breached = s.hp <= 0;
       built.group.scale.set(1, Math.max(0.02, rise) * (breached ? 0.34 : 1), 1);
       const damaged = breached ? 1 : 1 - s.hp / s.maxHp;
+      // A structure stands in its own glowcap light after dark, so a taller tier
+      // is literally brighter. The floor pools alone could not say this: they
+      // sit under the masonry they are meant to light.
+      const lit = breached ? 0 : Math.min(0.22, s.glowcaps * 0.05) * nightMix;
       for (const entry of built.meshes) {
         const mat = entry.mesh.material;
         applyTone(mat.color, entry.tone, palette);
+        // Masonry catches the cap light; sugar, colony and ink never shift, so
+        // the things the player tracks under pressure stay the colour they were.
+        if (lit > 0 && MASONRY_TONES.has(entry.tone)) mat.color.lerp(capLight, lit);
         // Damage reads as the masonry losing colour, before any HP bar is shown.
         if (damaged > 0.02) mat.color.lerp(damageTint, damaged * (breached ? 0.85 : 0.55));
         if (s.flash > 0) mat.color.lerp(white, Math.min(1, s.flash * 12));
@@ -270,6 +318,9 @@ export class StructureLayer {
 
 const damageTint = new Color(0x3a3540);
 const white = new Color(0xffffff);
+/** A pale wash rather than the cap colour itself: lit stone, not green stone. */
+const capLight = new Color(0xcdf0b4);
+const MASONRY_TONES = new Set<Piece['tone']>(['pebble', 'pebbleDark', 'resin']);
 
 function applyTone(out: Color, tone: Piece['tone'], palette: Palette): void {
   switch (tone) {

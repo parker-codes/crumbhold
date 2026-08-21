@@ -12,6 +12,14 @@ const TEX_W = 512;
 const TEX_H = 768;
 
 /**
+ * The floor plane runs well past the playable bounds. At a wide aspect the
+ * frustum is nearly 2000 units across against a 1440 unit world, so a plane cut
+ * to `WORLD` showed its own edge against the clear colour — the gallery looked
+ * like a rug rather than a room dug out of earth.
+ */
+const FLOOR_OVERSCAN = 2.2;
+
+/**
  * Static world layer: packed-earth floor with excavation detail, the three lane
  * tunnels, and the chamber converge ring. Built once. Every colour is read from
  * the live palette each frame, so the cross-fade costs nothing.
@@ -21,22 +29,40 @@ export class FloorLayer {
   private readonly floorMat: MeshLambertMaterial;
   private readonly laneMat: MeshBasicMaterial;
   private readonly ringMat: MeshBasicMaterial;
-  private readonly wallMat: MeshLambertMaterial;
+  private readonly wallMat: MeshBasicMaterial;
   private readonly collarMat = new MeshLambertMaterial();
+  private readonly chamberMat: MeshBasicMaterial;
 
   constructor() {
     const detail = new CanvasTexture(buildDetailCanvas());
     detail.wrapS = RepeatWrapping;
     detail.wrapT = RepeatWrapping;
     detail.anisotropy = 4;
-    // Tiled so the grain reads at play zoom instead of as soft blotches.
-    detail.repeat.set(4, 6);
+    // Tiled so the grain reads at play zoom instead of as soft blotches. The
+    // repeat scales with the overscan so the grain size never changes.
+    detail.repeat.set(4 * FLOOR_OVERSCAN, 6 * FLOOR_OVERSCAN);
 
     this.floorMat = new MeshLambertMaterial({ map: detail });
-    const floor = new Mesh(new PlaneGeometry(WORLD.width, WORLD.height), this.floorMat);
+    const floor = new Mesh(
+      new PlaneGeometry(WORLD.width * FLOOR_OVERSCAN, WORLD.height * FLOOR_OVERSCAN),
+      this.floorMat,
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(WORLD.width / 2, 0, WORLD.height / 2);
+    floor.receiveShadow = true;
     this.group.add(floor);
+
+    // The chamber floor: earth swept flat around the brood, with a soft edge so
+    // it reads as worn rather than painted on. It gives the frame a centre to
+    // fall away from, which the raw floor tone alone never did.
+    const falloff = new CanvasTexture(buildFalloffCanvas());
+    this.chamberMat = new MeshBasicMaterial({
+      map: falloff, transparent: true, opacity: 0.34, depthWrite: false,
+    });
+    const chamber = new Mesh(new CircleGeometry(WORLD.laneConvergeRadius * 1.34, 56), this.chamberMat);
+    chamber.rotation.x = -Math.PI / 2;
+    chamber.position.set(BROOD_POS.x, 0.6, BROOD_POS.y);
+    this.group.add(chamber);
 
     // Lanes: literal tunnels worn into the floor.
     this.laneMat = new MeshBasicMaterial({ transparent: true, opacity: 0.55 });
@@ -57,13 +83,16 @@ export class FloorLayer {
     this.group.add(ring);
 
     // Tunnel mouths: dark openings the raids come out of, ringed in masonry.
-    this.wallMat = new MeshLambertMaterial();
+    // The hole is a radial fade rather than a flat disc, so it reads as depth.
+    this.wallMat = new MeshBasicMaterial({
+      map: new CanvasTexture(buildMouthCanvas()), transparent: true, depthWrite: false,
+    });
     for (const mouth of TUNNEL_MOUTHS) {
       const collar = new Mesh(new CircleGeometry(118, 30), this.collarMat);
       collar.rotation.x = -Math.PI / 2;
       collar.position.set(mouth.x, 1.9, mouth.y);
       this.group.add(collar);
-      const hole = new Mesh(new CircleGeometry(86, 26), this.wallMat);
+      const hole = new Mesh(new CircleGeometry(96, 30), this.wallMat);
       hole.rotation.x = -Math.PI / 2;
       hole.position.set(mouth.x, 2.2, mouth.y);
       this.group.add(hole);
@@ -72,9 +101,10 @@ export class FloorLayer {
 
   update(palette: Palette): void {
     this.floorMat.color.copy(palette.floor);
+    this.chamberMat.color.copy(palette.floorAlt);
     this.laneMat.color.copy(palette.trail);
     this.ringMat.color.copy(palette.trail);
-    this.wallMat.color.copy(palette.pebbleDark).multiplyScalar(0.42);
+    this.wallMat.color.copy(palette.haze);
     this.collarMat.color.copy(palette.pebbleDark).multiplyScalar(0.9);
   }
 }
@@ -123,6 +153,30 @@ function buildDetailCanvas(): HTMLCanvasElement {
     grain.data[i + 2] = clampByte(grain.data[i + 2] + n);
   }
   ctx.putImageData(grain, 0, 0);
+  return canvas;
+}
+
+/** White at the centre fading to transparent: a soft-edged disc. */
+function buildFalloffCanvas(): HTMLCanvasElement {
+  return radialCanvas([[0, 1], [0.4, 0.86], [0.72, 0.36], [1, 0]]);
+}
+
+/** Opaque at the centre, so a tunnel mouth reads as a hole and not a decal. */
+function buildMouthCanvas(): HTMLCanvasElement {
+  return radialCanvas([[0, 1], [0.5, 0.97], [0.8, 0.66], [1, 0]]);
+}
+
+function radialCanvas(stops: readonly [number, number][]): HTMLCanvasElement {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  for (const [at, alpha] of stops) g.addColorStop(at, `rgba(255,255,255,${alpha})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
   return canvas;
 }
 

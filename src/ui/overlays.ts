@@ -8,6 +8,7 @@ export type OverlayName = 'title' | 'pause' | 'win' | 'lose' | 'none';
 
 export interface OverlayCallbacks {
   onStart(): void;
+  onTutorial(): void;
   onResume(): void;
   onRetry(): void;
   onContinueEndless(): void;
@@ -76,6 +77,7 @@ export class Overlays {
     } else {
       card.appendChild(button('big', 'Begin', () => this.callbacks.onStart()));
     }
+    card.appendChild(button('ghost', 'Tutorial', () => this.callbacks.onTutorial()));
     const help = document.createElement('div');
     help.className = 'help';
     help.innerHTML = helpHtml();
@@ -104,7 +106,8 @@ export class Overlays {
   }
 
   private buildWin(card: HTMLElement, sim: Sim | null): void {
-    card.innerHTML = `<h1>The colony holds</h1><p>Twelve nights. The brood is safe.</p>`;
+    card.innerHTML = `<h1>The colony holds</h1>`
+      + `<p>You held all twelve nights. The brood is safe.</p>`;
     if (sim) card.appendChild(summary(sim));
     card.appendChild(button('big', 'Keep going', () => this.callbacks.onContinueEndless()));
     card.appendChild(button('ghost', 'New run', () => this.callbacks.onRetry()));
@@ -112,13 +115,14 @@ export class Overlays {
 
   private buildLose(card: HTMLElement, sim: Sim | null): void {
     const night = sim?.state.loseNight ?? 0;
-    card.innerHTML = `<h1 style="color:#c2405b">The brood falls</h1><p>Night ${night}.</p>`;
+    card.innerHTML = `<h1 style="color:#c2405b">The brood falls</h1>`
+      + `<p>You held ${Math.max(0, night - 1)} of ${TIME.nightsPerRun} nights.</p>`;
     if (sim) {
       card.appendChild(summary(sim));
       const gap = biggestGap(sim);
       if (gap) {
         const note = document.createElement('p');
-        note.innerHTML = `Largest thing left unbuilt: <b style="color:#f5c147">${gap}</b>`;
+        note.innerHTML = `You never built the <b style="color:#f5c147">${gap}</b>.`;
         card.appendChild(note);
       }
     }
@@ -128,6 +132,10 @@ export class Overlays {
   private buildSettings(): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'rows';
+    wrap.appendChild(toggle('Ambient music', this.settings.music, (on) => {
+      this.settings.music = on;
+      this.callbacks.onSettingChange({ music: on });
+    }));
     wrap.appendChild(toggle('Sound', this.settings.audio, (on) => {
       this.settings.audio = on;
       this.callbacks.onSettingChange({ audio: on });
@@ -161,7 +169,7 @@ function summary(sim: Sim): HTMLElement {
     row('Nights held', String(st.stats.nightsHeld)) +
     row('Sugar gathered', String(Math.round(st.stats.sugarEarned))) +
     row('Sugar spent', String(Math.round(st.stats.sugarSpent))) +
-    row('Invaders felled', String(st.stats.invadersKilled)) +
+    row('Invaders killed', String(st.stats.invadersKilled)) +
     row('Knockdowns', String(st.stats.knockdowns)) +
     row('Glowcaps', String(glowcapCount(st)));
   return rows;
@@ -170,7 +178,7 @@ function summary(sim: Sim): HTMLElement {
 /**
  * Names the most expensive thing the player could have built and did not. Locked
  * sites are excluded: "you never built the Acid Battery" is not useful advice
- * when the Brood Chamber never reached the tier that unlocks it.
+ * when the Brood Chamber never reached the level that unlocks it.
  */
 function biggestGap(sim: Sim): string | null {
   const st = sim.state;
@@ -191,17 +199,22 @@ function biggestGap(sim: Sim): string | null {
   return bestLabel;
 }
 
+/**
+ * Every line says what the player does and what happens. No line describes the
+ * design of the game to the person trying to play it.
+ */
 function helpHtml(): string {
   const lines = [
-    'Drag anywhere on the left to walk. Attacks fire themselves.',
-    'Stand on a pad to spend. Leaving keeps what you paid.',
-    'Haul honeydew to the vat and leaf scraps to the fungus garden.',
-    'The day is 45 seconds. What you skip is the decision.',
+    'Drag the left side of the screen to walk. You attack automatically.',
+    'Stand on a pad to buy it. Walk away and your sugar stays on the pad.',
+    'Carry honeydew to the Nectar Vat and leaf scraps to the Fungus Garden. Both pay you in sugar.',
+    'Each day lasts 45 seconds \u2014 too short to do everything. Pick what matters.',
+    'Hold the Brood Chamber for twelve nights to win.',
   ];
   // Only worth the line on a device that has a keyboard to mention.
   if (hasKeyboard()) {
     lines.push(
-      'On a keyboard: <b>WASD</b> or the arrows to walk, ' +
+      'Keyboard: <b>WASD</b> or the arrow keys to walk, ' +
       '<b>Space</b> for the button, <b>Esc</b> to pause.',
     );
   }

@@ -13,6 +13,7 @@ import { projectiles } from './systems/projectiles';
 import { spawn } from './systems/spawn';
 import { stack } from './systems/stack';
 import { structures } from './systems/structures';
+import { tutorial } from './tutorial';
 import type { Sim } from './sim';
 
 /**
@@ -41,6 +42,9 @@ export function step(sim: Sim, dt: number): void {
 
   actions(sim, dt);
   phase(sim, dt);
+  // After `phase`, so a step sees the phase this frame settled on, and before
+  // `spawn`, so a scripted night's queue is released the same frame it is set.
+  tutorial(sim, dt);
   spawn(sim, dt);
   ai(sim, dt);
   movement(sim, dt);
