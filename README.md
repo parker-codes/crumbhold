@@ -48,7 +48,7 @@ key is ignored while a thumb is on the stick, so the two never fight.
 | --- | --- |
 | `W` `A` `S` `D` or the arrow keys | Move. Diagonals are normalised, so no speed bonus. |
 | `Space` | The action button. Its on-screen label names the key until a touch arrives, then it goes. |
-| `Esc` | Pause, and press again to resume. |
+| `Esc` | Pause, and press again to resume. Inside Settings or How to play it closes the panel first. |
 
 You attack automatically in both cases; there is no attack input, ever. And you
 never tap to buy: you walk onto a pad and stay there.
@@ -57,6 +57,12 @@ never tap to buy: you walk onto a pad and stay there.
 the open and close of a night. It rides the Vibration API, which Android
 implements and iOS Safari does not, so on an iPhone there is nothing to feel and
 the setting is hidden. Nothing the game has to say is said by the motor alone.
+
+**Menus.** Each sheet shows the name, the one button that starts playing, and
+then a footer of ways to read about the game. **How to play** and **Tutorial**
+sit at the foot of the title screen; **Settings** and **How to play** at the foot
+of the pause sheet. Both open as their own panel with a Back button, so nothing
+has to be read past to reach the button the player came for.
 
 **Tutorial** on the title screen runs a guided sixteen-step version of a real
 day and night. It never writes the save.
