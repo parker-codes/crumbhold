@@ -56,6 +56,19 @@ const LESSONS: Lesson[] = [
 const DOT_COUNT = 9;
 
 export class Onboarding {
+  /**
+   * Set by the tutorial to aim the trail at an arbitrary world point. The
+   * tutorial and the diegetic lessons share one trail so the player only ever
+   * learns to read one thing.
+   */
+  override: { x: number; y: number } | null = null;
+  /**
+   * Set while a tutorial runs. The tutorial owns the trail, so the diegetic
+   * lessons must not point somewhere else on a step that has no target of its
+   * own.
+   */
+  muted = false;
+
   private readonly dots: HTMLElement[] = [];
   private readonly learned = new Set<string>();
   private readonly projected = { x: 0, y: 0 };
@@ -78,19 +91,22 @@ export class Onboarding {
   }
 
   update(sim: Sim, project: (x: number, y: number, z: number, out: { x: number; y: number }) => boolean, time: number): void {
-    const lesson = this.pick(sim);
-    if (!lesson) {
+    let to = this.override;
+    if (!to && !this.muted) {
+      const lesson = this.pick(sim);
+      const pad = lesson ? sim.state.pads.find((p) => p.id === lesson.site) : undefined;
+      to = pad ? pad.pos : null;
+    }
+    if (!to) {
       for (const dot of this.dots) dot.style.display = 'none';
       return;
     }
-    const pad = sim.state.pads.find((p) => p.id === lesson.site);
-    if (!pad) return;
     const w = sim.state.warden.pos;
     for (let i = 0; i < this.dots.length; i++) {
       // The trail crawls toward the pad, which reads as a scent being laid.
       const t = ((i + 1) / (DOT_COUNT + 1) + time * 0.35) % 1;
-      const x = w.x + (pad.pos.x - w.x) * t;
-      const y = w.y + (pad.pos.y - w.y) * t;
+      const x = w.x + (to.x - w.x) * t;
+      const y = w.y + (to.y - w.y) * t;
       const dot = this.dots[i];
       if (!project(x, y, 8, this.projected)) {
         dot.style.display = 'none';

@@ -223,7 +223,7 @@ function knockDown(sim: Sim): void {
   }
   syncStackColumns(sim);
   if (st.stats.knockdowns === 1) {
-    sim.hooks.onToast('The brood is what matters. The workers always carry you home.', 2);
+    sim.hooks.onToast('Workers are carrying you home. You dropped half your load.', 2);
   }
 }
 

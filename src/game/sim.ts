@@ -9,6 +9,7 @@ import {
   type InvaderKind, type SoundName,
 } from './balance';
 import { createRun, syncGlowcaps } from './state';
+import type { Tutorial } from './tutorial';
 import type {
   Invader, Major, Particle, Phase, Pickup, Projectile, ResourceKind,
   RunState, Settings, Structure,
@@ -68,6 +69,13 @@ export class Sim {
     nightBrightness: 0,
     damageNumbers: false,
   };
+
+  /**
+   * Set while a guided tutorial is running. The systems below are untouched by
+   * it: the tutorial drives the same pads, spawn queue and carry cap the real
+   * game does, so it can never demonstrate something the game will not do.
+   */
+  tutorial: Tutorial | null = null;
 
   reducedMotion = false;
   /** Debug cheat and harness switch: nothing friendly can be lost. */

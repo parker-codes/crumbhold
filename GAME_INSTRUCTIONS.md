@@ -27,18 +27,22 @@ beats.
 | **Night** | until the last invader dies | You fight. Nothing can be gathered safely. |
 | **Tally** | 2.5 seconds | A brood cell fills, and your keep for the night is counted. |
 
-The day is a heist against a clock. Forty-five seconds is not enough time to do
-everything you can see, and choosing what to skip *is* the game. Watch the
-daylight shaft sweep across the floor: when it goes out, they arrive.
+Forty-five seconds is not enough time to do everything you can see. Pick the two
+or three things that matter and let the rest wait. Watch the daylight shaft sweep
+across the floor: when it goes out, they arrive.
 
-You can end a day early with the action button, which pays **+15% on that
-night's sugar**. A good trade when the day's useful work is already done.
+Press **End day** to start the night early. It pays **+15% on that night's
+sugar** — a good trade once the day's useful work is done.
 
 ## Controls
 
-Attacks are automatic. There is no attack button and never will be — you spray
-the nearest thing in range on your own, and your facing follows your aim rather
-than your movement, so you can back away while still spraying.
+You attack automatically. There is no attack button: you spray the nearest thing
+in range on your own, and you face what you are shooting rather than where you
+are walking, so you can back away while still firing.
+
+**New here?** Pick **Tutorial** on the title screen. It walks you through every
+mechanic in the real gallery, one step at a time, and it does not touch your
+saved run.
 
 **Touch.** Drag anywhere in the lower-left to walk; the joystick appears wherever
 your thumb lands. One button, bottom right. Pause, top right.
@@ -51,10 +55,10 @@ urgent:
 
 | Button | When | Does |
 | --- | --- | --- |
-| **Trail** | At night, once you own a Soldier Gallery | Lays a pheromone trail. Every major converges on you for 6 seconds, then walks back. 12 second cooldown. |
-| **Drum** | On foot, once you own the Paddock | Drums for the beetle. It scuttles over and you mount on contact. |
-| **Down** | While mounted | Dismount. The beetle waits where you leave it. |
-| **Ready** | Daytime, nothing else pending | Ends the day early for the sugar bonus. |
+| **Rally** | At night, once you own a Soldier Gallery | Calls every major to you for 6 seconds, then they walk back to their posts. 12 second cooldown. |
+| **Mount** | On foot, once you own the Paddock | Calls the beetle. It scuttles over and you mount on contact. |
+| **Dismount** | While mounted | Get off. The beetle waits where you leave it. |
+| **End day** | Daytime, nothing else pending | Starts the night early for the sugar bonus. |
 
 ## The stack is the interface
 
@@ -74,9 +78,9 @@ Three resources, one currency:
 | **Honeydew** | 6 | Aphid Pens, a droplet every 4 seconds | The Nectar Vat, for sugar |
 | **Leaf scraps** | 5 | The Root Fringe, cut by standing next to a root | The Fungus Garden, for sugar |
 
-Honeydew and leaf scraps buy nothing directly. They exist so the day has a second
-thing worth doing, and they add up to real money: about a fifth to a third of
-everything a run earns, depending on how hard you work the pens.
+Honeydew and leaf scraps buy nothing directly — convert them first. They add up
+to about a fifth to a third of everything a run earns, depending on how hard you
+work the pens.
 
 **A full stack refuses.** At 25 sugar, further crystals bounce off you and the
 counter flashes. Nothing is destroyed, but nothing is gained either, so a full
@@ -148,8 +152,8 @@ mid-game.
 it, fighting anything within about 140 units and returning when it is clear. They
 will not chase across the gallery. They re-hatch free at the start of every
 night, so a gallery is bought once and pays out for the whole run — which makes
-it the strongest early purchase in the game. Use **Trail** to pull them off their
-marker and onto whatever is actually hurting you.
+it the strongest early purchase in the game. Press **Rally** to pull them off
+their marker and onto whatever is actually hurting you.
 
 **The beetle.** Bought at the Paddock, yours for the run. Faster, a wider pickup
 reach, and its horn tosses anything you run through. Your attacks come 15% slower
@@ -223,9 +227,9 @@ no economy dies around night seven, and an all-economy colony with no defence di
 around night five. Both lose. A colony that keeps everything at tier two clears
 night twelve most of the time.
 
-**You cannot build everything.** By design, a full run earns roughly 80% of what
-the complete build tree costs. Full coverage is impossible, so the interesting
-question is never "what next" but "what am I giving up".
+**You cannot build everything.** A full run earns roughly 80% of what the
+complete build tree costs, so you will always finish with gaps. Ask what you are
+giving up, not what comes next.
 
 ## Reading the screen
 

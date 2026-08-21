@@ -35,7 +35,7 @@ export function spawn(sim: Sim, _dt: number): void {
     if (!created) break;
     if (order.kind === 'wolfSpider') {
       sim.addShake(6);
-      sim.hooks.onToast('A wolf spider is in the tunnel.', 2);
+      sim.hooks.onToast('A wolf spider is coming down the tunnel.', 2);
     }
     st.spawnCursor++;
   }

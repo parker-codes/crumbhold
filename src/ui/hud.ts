@@ -18,6 +18,7 @@ const LEAF_GLYPH = `<svg class="chip__glyph" viewBox="0 0 24 24" aria-hidden="tr
  * bar, and two buttons.
  */
 export class Hud {
+  private readonly root: HTMLElement;
   private readonly band: SurfaceBand;
   private readonly sugarChip: HTMLElement;
   private readonly sugarValue: HTMLElement;
@@ -38,6 +39,14 @@ export class Hud {
   private readonly debug: HTMLElement;
   private readonly tally: HTMLElement;
   private readonly onboarding: Onboarding;
+  private readonly tutorialCard: HTMLElement;
+  private readonly tutorialChapter: HTMLElement;
+  private readonly tutorialCount: HTMLElement;
+  private readonly tutorialText: HTMLElement;
+  private readonly tutorialDetail: HTMLElement;
+  private readonly tutorialNext: HTMLButtonElement;
+  private readonly tutorialSkip: HTMLButtonElement;
+  private lastTutorialStep = -1;
   private readonly damageNodes: HTMLElement[] = [];
   private readonly stackBadges: HTMLElement[] = [];
 
@@ -54,9 +63,13 @@ export class Hud {
 
   onAction: (() => void) | null = null;
   onPause: (() => void) | null = null;
+  /** Advance a read-and-continue step, or step past one that is stuck. */
+  onTutorialNext: (() => void) | null = null;
+  onTutorialQuit: (() => void) | null = null;
 
   constructor(root: HTMLElement) {
     root.innerHTML = '';
+    this.root = root;
 
     this.band = new SurfaceBand();
     root.appendChild(this.band.element);
@@ -142,6 +155,27 @@ export class Hud {
       this.stackBadges.push(badge);
     }
     this.onboarding = new Onboarding(this.labelLayer);
+
+    // The tutorial card. Bottom centre, between the thumb zones, and never
+    // blocking input: only its two buttons take pointer events.
+    this.tutorialCard = el('div', 'tut');
+    const head = el('div', 'tut__head');
+    this.tutorialChapter = el('span', 'tut__chapter');
+    this.tutorialCount = el('span', 'tut__count');
+    head.append(this.tutorialChapter, this.tutorialCount);
+    this.tutorialText = el('p', 'tut__text');
+    this.tutorialDetail = el('p', 'tut__detail');
+    const row = el('div', 'tut__row');
+    this.tutorialSkip = el('button', 'tut__btn') as HTMLButtonElement;
+    this.tutorialSkip.type = 'button';
+    this.tutorialSkip.textContent = 'Quit tutorial';
+    this.tutorialSkip.addEventListener('click', () => this.onTutorialQuit?.());
+    this.tutorialNext = el('button', 'tut__btn tut__btn--go') as HTMLButtonElement;
+    this.tutorialNext.type = 'button';
+    this.tutorialNext.addEventListener('click', () => this.onTutorialNext?.());
+    row.append(this.tutorialSkip, this.tutorialNext);
+    this.tutorialCard.append(head, this.tutorialText, this.tutorialDetail, row);
+    root.appendChild(this.tutorialCard);
   }
 
   /** Suppresses trail hints a resumed run has already earned. */
@@ -195,11 +229,46 @@ export class Hud {
     this.updateChevrons(sim, view);
     this.updateDamageNumbers(sim, view);
     this.updateStackBadges(view);
+    this.updateTutorial(sim);
     this.onboarding.update(
       sim,
       (x, y, z, out) => view.stage.project(x, y, z, out),
       sim.state.time,
     );
+  }
+
+  /**
+   * The tutorial card, and the trail override that points at the current step's
+   * target. Only rebuilt when the step changes, so this costs nothing per frame.
+   */
+  private updateTutorial(sim: Sim): void {
+    const run = sim.tutorial;
+    const show = !!run && !run.finished;
+    this.tutorialCard.classList.toggle('on', show);
+    // Lifts the toast clear of the card, which owns the bottom of the screen.
+    this.root.classList.toggle('hud--tutorial', show);
+    // The card sits over the drag zone on a phone, so it steps out of the way
+    // the moment a thumb goes down rather than hiding the joystick under itself.
+    this.tutorialCard.classList.toggle('dim', sim.input.stick.active);
+    this.onboarding.muted = show;
+    if (!run || !show) {
+      this.onboarding.override = null;
+      this.lastTutorialStep = -1;
+      return;
+    }
+    this.onboarding.override = run.trail(sim);
+    if (run.index === this.lastTutorialStep) return;
+    this.lastTutorialStep = run.index;
+    const step = run.step;
+    this.tutorialChapter.textContent = step.chapter;
+    this.tutorialCount.textContent = `${run.index + 1} / ${run.total}`;
+    this.tutorialText.textContent = step.instruction;
+    this.tutorialDetail.textContent = step.detail;
+    // A step that waits on the player offers a way past it; one that only needs
+    // reading offers the way forward.
+    const waiting = !!step.done;
+    this.tutorialNext.textContent = waiting ? 'Skip step' : 'Next';
+    this.tutorialNext.classList.toggle('tut__btn--go', !waiting);
   }
 
   /**
@@ -334,6 +403,9 @@ export class Hud {
     const label = actionLabel(kind);
     if (this.actionText.textContent !== label) this.actionText.textContent = label;
     const cooldown = actionCooldown(sim, kind);
+    // With nothing to offer the button carries no label, and an empty disabled
+    // circle reads as a bug rather than as an absence.
+    this.actionBtn.classList.toggle('hidden', kind === 'none');
     this.actionBtn.disabled = kind === 'none' || cooldown > 0;
     this.actionWipe.style.setProperty('--wipe', `${cooldown}turn`);
   }
@@ -467,107 +539,80 @@ function romanTier(tier: number): string {
  * The Surface Band: a cross-section of the world above the colony. It is the
  * clock, the progress bar, the phase indicator, and the source of the in-world
  * light shaft, all in one object.
+ *
+ * Built from positioned elements at real pixel size rather than one stretched
+ * drawing. The old version was a 360 by 56 viewBox with
+ * `preserveAspectRatio="none"`, so on a desktop viewport every circle in it was
+ * squashed into an ellipse three and a half times too wide and every blade of
+ * grass splayed sideways. Nothing here scales horizontally: the sky is a
+ * gradient, the sun is a circle measured in pixels, and the brood cells are a
+ * centred row that keeps its own geometry at any width.
  */
 class SurfaceBand {
   readonly element: HTMLElement;
-  private readonly sun: SVGGElement;
-  private readonly moon: SVGGElement;
-  private readonly cells: SVGCircleElement[] = [];
+  private readonly body: HTMLElement;
+  private readonly bodyDisc: HTMLElement;
+  private readonly cells: HTMLElement[] = [];
   private filled = -1;
+  private wasNight: boolean | null = null;
 
   constructor() {
     this.element = el('div', 'band');
-    const svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('viewBox', '0 0 360 56');
-    svg.setAttribute('preserveAspectRatio', 'none');
 
-    // Six stops rather than one fill: a flat rectangle of sky is the difference
-    // between a strip of colour and a horizon. The stop colours come from the
-    // theme, so the band cross-fades with the gallery below it.
-    const defs = document.createElementNS(SVG, 'defs');
-    const gradient = document.createElementNS(SVG, 'linearGradient');
-    gradient.setAttribute('id', 'bandSky');
-    gradient.setAttribute('x1', '0');
-    gradient.setAttribute('y1', '0');
-    gradient.setAttribute('x2', '0');
-    gradient.setAttribute('y2', '1');
-    gradient.setAttribute('class', 'band__sky');
-    for (const at of ['0', '0.3', '0.5', '0.68', '0.85', '1']) {
-      const stop = document.createElementNS(SVG, 'stop');
-      stop.setAttribute('offset', at);
-      gradient.appendChild(stop);
+    const sky = el('div', 'band__sky');
+    // A drift of stars, only visible once the palette has gone over to night.
+    const stars = el('div', 'band__stars');
+    for (const [left, top, dim] of STARS) {
+      const star = el('i', '');
+      star.style.left = `${left}%`;
+      star.style.top = `${top}%`;
+      star.style.opacity = String(dim);
+      stars.appendChild(star);
     }
-    defs.appendChild(gradient);
-    svg.appendChild(defs);
+    sky.appendChild(stars);
+    this.element.appendChild(sky);
 
-    const sky = document.createElementNS(SVG, 'rect');
-    sky.setAttribute('x', '0');
-    sky.setAttribute('y', '0');
-    sky.setAttribute('width', '360');
-    sky.setAttribute('height', '30');
-    sky.setAttribute('fill', 'url(#bandSky)');
-    svg.appendChild(sky);
+    // Sun and moon share one element: only one is ever up, and swapping a class
+    // is cheaper than moving two nodes every frame.
+    this.body = el('div', 'band__body');
+    this.bodyDisc = el('div', 'band__disc');
+    this.body.appendChild(this.bodyDisc);
+    this.element.appendChild(this.body);
 
-    // Sun and moon travel above the soil line; only one is ever visible.
-    this.sun = document.createElementNS(SVG, 'g');
-    this.sun.innerHTML =
-      `<circle r="11" fill="#f5c147" opacity="0.16"/>` +
-      `<circle r="6" fill="#ffe6a8"/>`;
-    svg.appendChild(this.sun);
-    this.moon = document.createElementNS(SVG, 'g');
-    this.moon.innerHTML =
-      `<circle r="10" fill="#c8d4ff" opacity="0.14"/>` +
-      `<circle r="5.6" fill="#dfe4f5"/>` +
-      `<circle cx="2.6" cy="-1.8" r="4.2" fill="var(--band-1)"/>`;
-    svg.appendChild(this.moon);
-
-    const soil = document.createElementNS(SVG, 'path');
-    soil.setAttribute(
-      'd',
-      'M0 30 L34 30 L38 26 L52 26 L56 30 L360 30 L360 56 L0 56 Z',
-    );
-    soil.setAttribute('fill', 'var(--soil)');
-    svg.appendChild(soil);
+    const ground = el('div', 'band__ground');
+    ground.appendChild(el('div', 'band__horizon'));
+    // Two hairlines of strata. Real soil is layered, and the layers are what
+    // stop a block of brown reading as a block of brown.
+    ground.appendChild(el('div', 'band__stratum band__stratum--a'));
+    ground.appendChild(el('div', 'band__stratum band__stratum--b'));
+    for (const [left, size] of STONES) {
+      const stone = el('i', 'band__stone');
+      stone.style.left = `${left}%`;
+      stone.style.width = `${size}px`;
+      stone.style.height = `${size * 0.62}px`;
+      ground.appendChild(stone);
+    }
+    this.element.appendChild(ground);
 
     // The surface entrance, from which the daylight shaft descends.
-    const hole = document.createElementNS(SVG, 'path');
-    hole.setAttribute('d', 'M38 26 L52 26 L50 42 L40 42 Z');
-    hole.setAttribute('fill', 'var(--soil-deep)');
-    svg.appendChild(hole);
+    this.element.appendChild(el('div', 'band__mouth'));
 
-    const grass = document.createElementNS(SVG, 'g');
-    grass.setAttribute('stroke', '#5f7a45');
-    grass.setAttribute('stroke-width', '1.6');
-    grass.setAttribute('stroke-linecap', 'round');
-    grass.innerHTML =
-      `<path d="M14 30 C12 24 10 22 8 19"/><path d="M20 30 C20 25 21 22 23 18"/>` +
-      `<path d="M70 30 C68 25 66 23 64 20"/><path d="M76 30 C77 25 78 23 80 19"/>` +
-      `<path d="M300 30 C299 25 297 23 295 20"/><path d="M306 30 C307 25 309 23 311 19"/>`;
-    svg.appendChild(grass);
-
-    const pebble = document.createElementNS(SVG, 'ellipse');
-    pebble.setAttribute('cx', '246');
-    pebble.setAttribute('cy', '28');
-    pebble.setAttribute('rx', '13');
-    pebble.setAttribute('ry', '6');
-    pebble.setAttribute('fill', 'var(--pebble)');
-    pebble.setAttribute('opacity', '0.8');
-    svg.appendChild(pebble);
-
-    // Twelve brood cells set into the soil, one per night held.
-    for (let i = 0; i < TIME.nightsPerRun; i++) {
-      const cell = document.createElementNS(SVG, 'circle');
-      cell.setAttribute('cx', String(96 + i * 21));
-      cell.setAttribute('cy', '43');
-      cell.setAttribute('r', '6.4');
-      cell.setAttribute('fill', 'var(--soil-deep)');
-      cell.setAttribute('stroke', 'var(--rule)');
-      cell.setAttribute('stroke-width', '1');
-      svg.appendChild(cell);
-      this.cells.push(cell);
+    for (const [left, variant] of BLADES) {
+      const clump = el('div', `band__blades ${variant}`);
+      clump.style.left = `${left}%`;
+      clump.innerHTML = BLADE_SVG;
+      this.element.appendChild(clump);
     }
 
-    this.element.appendChild(svg);
+    // Twelve brood cells set into the soil, one per night held. Hexagons,
+    // because that is the shape of a real brood comb and it reads as one.
+    const comb = el('div', 'band__comb');
+    for (let i = 0; i < TIME.nightsPerRun; i++) {
+      const cell = el('i', 'band__cell');
+      comb.appendChild(cell);
+      this.cells.push(cell);
+    }
+    this.element.appendChild(comb);
   }
 
   update(sim: Sim): void {
@@ -582,26 +627,52 @@ class SurfaceBand {
     } else {
       t = sim.phaseProgress;
     }
-    const x = 24 + t * 312;
-    const y = 24 - Math.sin(t * Math.PI) * 15;
-    this.sun.setAttribute('transform', `translate(${x} ${y})`);
-    this.moon.setAttribute('transform', `translate(${x} ${y})`);
-    this.sun.style.display = night ? 'none' : 'block';
-    this.moon.style.display = night ? 'block' : 'none';
+    // Percent across, and an arc that peaks at midday rather than a straight
+    // line. The disc keeps its own pixel size, so it stays round.
+    this.body.style.left = `${7 + t * 86}%`;
+    this.body.style.top = `${40 - Math.sin(t * Math.PI) * 24}%`;
+
+    if (night !== this.wasNight) {
+      this.wasNight = night;
+      this.element.classList.toggle('band--night', night);
+    }
 
     const held = st.stats.nightsHeld;
     if (held !== this.filled) {
       this.filled = held;
       for (let i = 0; i < this.cells.length; i++) {
-        const on = i < held;
-        this.cells[i].setAttribute('fill', on ? '#f5c147' : 'var(--soil-deep)');
-        this.cells[i].setAttribute('stroke', on ? '#c48a16' : 'var(--rule)');
+        this.cells[i].classList.toggle('on', i < held);
       }
     }
   }
 }
 
-const SVG = 'http://www.w3.org/2000/svg';
+/** Left percent, top percent, and base opacity for each star. */
+const STARS: readonly [number, number, number][] = [
+  [7, 22, 0.7], [14, 52, 0.4], [23, 16, 0.85], [31, 40, 0.5], [39, 26, 0.6],
+  [47, 58, 0.35], [55, 20, 0.8], [62, 44, 0.45], [70, 14, 0.7], [77, 36, 0.55],
+  [85, 24, 0.9], [92, 50, 0.4],
+];
+
+/** Left percent and width in pixels for the stones set into the soil. */
+const STONES: readonly [number, number][] = [[36, 8], [87, 11]];
+
+/**
+ * Left percent and variant for each grass clump. One SVG mirrored and cropped
+ * beats four copies of the same silhouette in a row.
+ */
+const BLADES: readonly [number, string][] = [
+  [4, ''],
+  [20, 'band__blades--flip band__blades--short'],
+  [64, 'band__blades--short'],
+  [82, 'band__blades--flip'],
+];
+
+const BLADE_SVG =
+  `<svg width="26" height="15" viewBox="0 0 26 15" fill="none" aria-hidden="true">` +
+  `<path d="M4 15C3 9 2 6 0 3" /><path d="M9 15C9 9 10 5 12 1" />` +
+  `<path d="M15 15C15 10 16 7 18 4" /><path d="M21 15C22 10 23 7 26 4" />` +
+  `</svg>`;
 
 function line(label: string, value: string, extra = ''): string {
   return `<div class="tally__line ${extra}"><span>${label}</span><b>${value}</b></div>`;

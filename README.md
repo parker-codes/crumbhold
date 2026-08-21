@@ -38,7 +38,7 @@ key is ignored while a thumb is on the stick, so the two never fight.
 | Input | Action |
 | --- | --- |
 | Drag in the left 45 percent, bottom 70 percent | Move. The joystick appears where you touch. |
-| Action button, bottom right | Context sensitive: Trail, Drum, dismount, or Ready. |
+| Action button, bottom right | Context sensitive: Rally, Mount, Dismount, or End day. |
 | Pause button, top right | Pause. Instant, free, no timer runs. |
 
 **Keyboard (desktop)**
@@ -49,8 +49,11 @@ key is ignored while a thumb is on the stick, so the two never fight.
 | `Space` | The action button. Its on-screen label names the key on a desktop pointer. |
 | `Esc` | Pause, and press again to resume. |
 
-Attacks are fully automatic in both cases; there is no attack input, ever. And
-you never tap to buy: you walk onto a pad and stay there.
+You attack automatically in both cases; there is no attack input, ever. And you
+never tap to buy: you walk onto a pad and stay there.
+
+**Tutorial** on the title screen runs a guided sixteen-step version of a real
+day and night. It never writes the save.
 
 Note that walking *across* a pad pays into it. That is the presence rule working
 as specified, not a misfire.
@@ -78,7 +81,7 @@ Three, all deliberate.
    if they survive reaching zero. Deleting them makes the Mortar Pile pointless
    and turns every lost barricade into a full-price rebuild.
 
-Two smaller notes:
+A few smaller notes:
 
 - The section 10.4 threat table drifts up to two points from its own formula from
   night 7 on. `threat(n) = round(40 * 1.32^(n-1))` is the stated source of truth
@@ -87,6 +90,14 @@ Two smaller notes:
   three Spitter Post sites where section 7 lists four, so the printed figure is
   250 light. The harness derives the total from the cost tables instead, which
   comes to 6605 and cannot drift when a cost or a site changes.
+- **The tutorial is a real run, not a slideshow.** `game/tutorial.ts` is a
+  sixteen-step script that drives the same systems the game does: the same pads,
+  the same 25 carry cap, the same spawn queue. Each step waits on a predicate
+  over live state, so a step cannot be satisfied by anything except actually
+  doing the thing. Only three things are held rather than faked — the day clock
+  is parked so a lesson is never cut off, the chamber is invulnerable via the
+  existing `sim.invulnerable`, and the one scripted night writes its own small
+  spawn queue instead of the night-1 roster. It never writes the save.
 - **One theme drives the world and the HUD.** `render/palette.ts` carries three
   things per phase: the world tones, a five-light rig (hemisphere, ambient, key,
   cool fill, rim, plus tone-mapping exposure), and the interface tokens. The
@@ -106,7 +117,7 @@ Two smaller notes:
 src/
   engine/   loop, input, audio, rng, ease, pool, spatial, viewport
   game/     balance.ts (every tunable), gallery.ts (fixed sites and lanes),
-            waves.ts, state.ts, sim.ts, step.ts, save.ts, systems/
+            waves.ts, state.ts, sim.ts, step.ts, save.ts, tutorial.ts, systems/
   render/   scene, floor, lighting, atmosphere, creatures, structuresView,
             padsView, props, palette, view
   ui/       hud, overlays, onboarding, debug, style.css

@@ -5,6 +5,7 @@ import { Viewport, requestWakeLock } from './engine/viewport';
 import { CAPS } from './game/balance';
 import { Sim } from './game/sim';
 import { step } from './game/step';
+import { Tutorial } from './game/tutorial';
 import { loadSave, serializeRun, writeSave } from './game/save';
 import type { Phase, SaveFile } from './game/types';
 import { View } from './render/view';
@@ -52,6 +53,7 @@ const overlays = new Overlays(
   overlayRoot,
   {
     onStart: () => startRun(newSeed()),
+    onTutorial: () => startTutorial(),
     onResume: () => resume(),
     onRetry: () => startRun(newSeed()),
     onContinueEndless: () => {
@@ -95,6 +97,11 @@ hud.onAction = () => {
   input.queueAction();
 };
 hud.onPause = () => pause();
+hud.onTutorialNext = () => {
+  sim.tutorial?.advance();
+  if (sim.tutorial?.finished) endTutorial();
+};
+hud.onTutorialQuit = () => endTutorial();
 
 input.onFirstPointer = () => audio.unlock();
 input.onPauseKey = () => (overlays.shown === 'pause' ? resume() : pause());
@@ -134,6 +141,40 @@ function startRun(seed: number): void {
   hud.seedOnboarding(sim);
   audio.setMusic('day');
   acquireWakeLock();
+}
+
+/**
+ * A guided run in the real gallery. It never touches the saved run: `persist`
+ * skips while a tutorial is live, so a player can take the tutorial mid-campaign
+ * and come back to exactly where they were.
+ */
+function startTutorial(): void {
+  audio.unlock();
+  sim.reset(newSeed());
+  sim.tutorial = new Tutorial();
+  sim.state.phase = 'day';
+  sim.state.phaseStartedAt = 0;
+  overlays.hide();
+  loop.paused = false;
+  loop.resetClock();
+  started = true;
+  audio.setMusic('day');
+  acquireWakeLock();
+}
+
+/** Back to the title, with the saved run untouched and the cheat switch off. */
+function endTutorial(): void {
+  sim.tutorial = null;
+  sim.invulnerable = false;
+  started = false;
+  loop.paused = true;
+  canvas.style.filter = '';
+  hud.clearToast();
+  audio.setMusic('off');
+  overlays.setHasSavedRun(save.activeRun !== null);
+  overlays.show('title', null);
+  sim.state.phase = 'title';
+  releaseWakeLock();
 }
 
 function resume(): void {
@@ -181,6 +222,8 @@ function onPhaseChange(prev: Phase, next: Phase): void {
 
 function persist(): void {
   const st = sim.state;
+  // A tutorial must never overwrite a real run.
+  if (sim.tutorial) return;
   const live = started && st.phase !== 'win' && st.phase !== 'lose' && st.phase !== 'title';
   save.activeRun = live ? serializeRun(st) : null;
   save.settings = sim.settings;

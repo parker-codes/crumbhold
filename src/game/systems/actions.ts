@@ -17,16 +17,23 @@ export function currentAction(sim: Sim): ActionKind {
   }
   if (st.warden.mounted) return 'dismount';
   if (st.beetle.owned) return 'drum';
-  if (st.phase === 'day') return 'ready';
+  // A guided tutorial holds the day open on purpose, so End day is offered only
+  // on the step that teaches it. Otherwise one tap would skip the lesson.
+  if (st.phase === 'day' && (!sim.tutorial || sim.tutorial.step.ownsClock)) return 'ready';
   return 'none';
 }
 
+/**
+ * Say what the button does, not what the fiction calls it. "Trail" and "Drum"
+ * name the pheromone and the signal; the player needs to know they summon the
+ * majors and the beetle. "Down" could mean anything.
+ */
 export function actionLabel(kind: ActionKind): string {
   switch (kind) {
-    case 'trail': return 'Trail';
-    case 'drum': return 'Drum';
-    case 'dismount': return 'Down';
-    case 'ready': return 'Ready';
+    case 'trail': return 'Rally';
+    case 'drum': return 'Mount';
+    case 'dismount': return 'Dismount';
+    case 'ready': return 'End day';
     default: return '';
   }
 }
