@@ -70,6 +70,12 @@ export class Input {
   onDebugKey: ((code: string) => void) | null = null;
 
   private pointerId = -1;
+  /**
+   * Every finger currently down on the floor, newest last. Only one drives the
+   * stick, but the rest are kept so lifting the driving thumb hands the stick to
+   * a finger that is already down instead of stopping the Warden dead.
+   */
+  private readonly pointers = new Map<number, { x: number; y: number }>();
   private readonly keys = new Set<string>();
   private actionQueued = false;
   private firstPointerSeen = false;
@@ -103,6 +109,7 @@ export class Input {
 
   releaseAll(): void {
     this.keys.clear();
+    this.pointers.clear();
     this.pointerId = -1;
     this.state.stick.active = false;
     this.state.moveX = 0;
@@ -121,29 +128,32 @@ export class Input {
     this.onFirstPointer?.();
   }
 
-  private readonly onPointerDown = (e: PointerEvent): void => {
-    e.preventDefault();
+  /**
+   * Any point on the floor starts a stick. There is no reserved corner: the HUD
+   * controls are real elements above the canvas and swallow their own presses,
+   * so a press that arrives here is one the player meant for the floor.
+   *
+   * The three `pointer*` methods below take plain numbers rather than events, so
+   * the whole multi-touch path can be driven from a test without a DOM.
+   */
+  pointerDown(id: number, x: number, y: number): void {
     this.markFirstPointer();
+    this.pointers.set(id, { x, y });
+    // A second finger does not steal a live drag; it waits its turn.
     if (this.pointerId !== -1) return;
-    // Dynamic origin: the stick only claims the left 45 percent, bottom 70 percent.
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    if (e.clientX > w * 0.45 || e.clientY < h * 0.3) return;
-    this.pointerId = e.pointerId;
-    const s = this.state.stick;
-    s.active = true;
-    s.originX = e.clientX;
-    s.originY = e.clientY;
-    s.knobX = e.clientX;
-    s.knobY = e.clientY;
-  };
+    this.claim(id, x, y);
+  }
 
-  private readonly onPointerMove = (e: PointerEvent): void => {
-    if (e.pointerId !== this.pointerId) return;
-    e.preventDefault();
+  pointerMove(id: number, x: number, y: number): void {
+    const tracked = this.pointers.get(id);
+    if (tracked) {
+      tracked.x = x;
+      tracked.y = y;
+    }
+    if (id !== this.pointerId) return;
     const s = this.state.stick;
-    let dx = e.clientX - s.originX;
-    let dy = e.clientY - s.originY;
+    let dx = x - s.originX;
+    let dy = y - s.originY;
     const dist = Math.hypot(dx, dy);
     if (dist > FULL_DEFLECTION) {
       // Drag the origin along so the stick never runs out of travel.
@@ -164,14 +174,48 @@ export class Input {
     const len = Math.hypot(dx, dy) || 1;
     this.state.moveX = (dx / len) * mag;
     this.state.moveY = (dy / len) * mag;
-  };
+  }
 
-  private readonly onPointerUp = (e: PointerEvent): void => {
-    if (e.pointerId !== this.pointerId) return;
+  pointerUp(id: number): void {
+    this.pointers.delete(id);
+    if (id !== this.pointerId) return;
     this.pointerId = -1;
+    // Hand the stick to the newest finger still down, from where it rests, so
+    // the Warden keeps walking and nothing snaps across the screen.
+    const next = lastEntry(this.pointers);
+    if (next) {
+      this.claim(next[0], next[1].x, next[1].y);
+      return;
+    }
     this.state.stick.active = false;
     this.state.moveX = 0;
     this.state.moveY = 0;
+  }
+
+  private claim(id: number, x: number, y: number): void {
+    this.pointerId = id;
+    const s = this.state.stick;
+    s.active = true;
+    s.originX = x;
+    s.originY = y;
+    s.knobX = x;
+    s.knobY = y;
+    this.state.moveX = 0;
+    this.state.moveY = 0;
+  }
+
+  private readonly onPointerDown = (e: PointerEvent): void => {
+    e.preventDefault();
+    this.pointerDown(e.pointerId, e.clientX, e.clientY);
+  };
+
+  private readonly onPointerMove = (e: PointerEvent): void => {
+    if (e.pointerId === this.pointerId) e.preventDefault();
+    this.pointerMove(e.pointerId, e.clientX, e.clientY);
+  };
+
+  private readonly onPointerUp = (e: PointerEvent): void => {
+    this.pointerUp(e.pointerId);
   };
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
@@ -198,4 +242,11 @@ export class Input {
   private readonly onKeyUp = (e: KeyboardEvent): void => {
     this.keys.delete(e.code);
   };
+}
+
+/** The most recently added entry of a Map, or null when it is empty. */
+function lastEntry<K, V>(map: Map<K, V>): [K, V] | null {
+  let last: [K, V] | null = null;
+  for (const entry of map) last = entry;
+  return last;
 }

@@ -1,7 +1,9 @@
 import { inject as injectAnalytics } from '@vercel/analytics';
 
 import { AudioBus } from './engine/audio';
+import { setHapticsEnabled } from './engine/haptics';
 import { Input } from './engine/input';
+import { attachInputKind } from './engine/inputKind';
 import { Loop } from './engine/loop';
 import { Viewport, requestWakeLock } from './engine/viewport';
 import { CAPS } from './game/balance';
@@ -29,12 +31,19 @@ const audio = new AudioBus();
 audio.enabled = save.settings.audio;
 audio.music = save.settings.music;
 
+// Publishes `data-input` on the root element and keeps it current, so the
+// interface can drop the key hints the moment a thumb arrives.
+attachInputKind();
+
 const sim = new Sim(newSeed(), audio);
 sim.settings = save.settings;
 sim.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+setHapticsEnabled(save.settings.haptics);
+
 const view = new View(canvas, sim);
 const hud = new Hud(hudRoot);
+hud.hapticsOn = save.settings.haptics;
 const input = new Input(canvas);
 // The systems read this object every step. Without the hand-off nothing the
 // player does, on a thumb or on a keyboard, ever reaches the Warden.
@@ -79,6 +88,10 @@ const overlays = new Overlays(
       if (patch.audio !== undefined) audio.setEnabled(patch.audio);
       if (patch.music !== undefined) {
         audio.setMusicEnabled(patch.music, sim.state.phase === 'night' ? 'night' : 'day');
+      }
+      if (patch.haptics !== undefined) {
+        setHapticsEnabled(patch.haptics);
+        hud.hapticsOn = patch.haptics;
       }
       if (patch.hudScale !== undefined) {
         document.documentElement.style.setProperty('--hud-scale', String(patch.hudScale));

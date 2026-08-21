@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SIM_DT } from '../src/engine/loop';
-import { axesFromKeys, isMovementKey } from '../src/engine/input';
+import { Input, axesFromKeys, isMovementKey } from '../src/engine/input';
 import { WARDEN } from '../src/game/balance';
 import { Sim } from '../src/game/sim';
 import { step } from '../src/game/step';
@@ -164,5 +164,69 @@ describe('input reaches the Warden', () => {
     const sim = new Sim(1);
     sim.setPhase('night', 0);
     expect(canEndDay(sim)).toBe(false);
+  });
+});
+
+/** Input only touches the canvas inside `attach`, which these tests never call. */
+function stickInput(): Input {
+  return new Input({} as HTMLCanvasElement);
+}
+
+describe('touch stick', () => {
+  it('starts a stick anywhere on the floor', () => {
+    // Regression: the stick used to claim only the left 45 percent and the
+    // bottom 70 percent, so half the screen was dead to a left-handed player
+    // and to anyone holding the phone the other way up.
+    for (const [x, y] of [[20, 20], [1200, 60], [640, 700], [1270, 710]]) {
+      const input = stickInput();
+      input.pointerDown(1, x, y);
+      expect(input.state.stick.active).toBe(true);
+      input.pointerMove(1, x, y + 80);
+      expect(input.state.moveY).toBeCloseTo(1, 6);
+    }
+  });
+
+  it('ignores a second finger while the first is driving', () => {
+    const input = stickInput();
+    input.pointerDown(1, 200, 600);
+    input.pointerMove(1, 200, 520);
+    input.pointerDown(2, 900, 300);
+    expect(input.state.stick.originX).toBe(200);
+    expect(input.state.moveY).toBeCloseTo(-1, 6);
+    // The second finger must not steer either, until it owns the stick.
+    input.pointerMove(2, 900, 400);
+    expect(input.state.moveY).toBeCloseTo(-1, 6);
+  });
+
+  it('hands the stick to a finger already down when the driver lifts', () => {
+    const input = stickInput();
+    input.pointerDown(1, 200, 600);
+    input.pointerMove(1, 300, 600);
+    input.pointerDown(2, 900, 300);
+    input.pointerUp(1);
+    // Still walking, from the resting finger, with no jump across the screen.
+    expect(input.state.stick.active).toBe(true);
+    expect(input.state.stick.originX).toBe(900);
+    expect(input.state.moveX).toBe(0);
+    input.pointerMove(2, 1000, 300);
+    expect(input.state.moveX).toBeCloseTo(1, 6);
+  });
+
+  it('stops her when the last finger lifts', () => {
+    const input = stickInput();
+    input.pointerDown(1, 200, 600);
+    input.pointerMove(1, 300, 600);
+    input.pointerUp(1);
+    expect(input.state.stick.active).toBe(false);
+    expect(input.state.moveX).toBe(0);
+    expect(input.state.moveY).toBe(0);
+  });
+
+  it('holds still inside the dead zone', () => {
+    const input = stickInput();
+    input.pointerDown(1, 400, 400);
+    input.pointerMove(1, 405, 402);
+    expect(input.state.moveX).toBe(0);
+    expect(input.state.moveY).toBe(0);
   });
 });

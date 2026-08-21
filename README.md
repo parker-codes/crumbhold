@@ -37,7 +37,7 @@ key is ignored while a thumb is on the stick, so the two never fight.
 
 | Input | Action |
 | --- | --- |
-| Drag in the left 45 percent, bottom 70 percent | Move. The joystick appears where you touch. |
+| Drag anywhere on the floor | Move. The joystick appears where you touch. A second finger waits its turn, and takes over if the first one lifts. |
 | Action button, bottom right | Context sensitive: Rally, Mount, or Dismount. Hidden when none apply. |
 | End day, top right | Starts the night early for the sugar bonus. Daytime only. |
 | Pause button, top right | Pause. Instant, free, no timer runs. |
@@ -47,11 +47,16 @@ key is ignored while a thumb is on the stick, so the two never fight.
 | Key | Action |
 | --- | --- |
 | `W` `A` `S` `D` or the arrow keys | Move. Diagonals are normalised, so no speed bonus. |
-| `Space` | The action button. Its on-screen label names the key on a desktop pointer. |
+| `Space` | The action button. Its on-screen label names the key until a touch arrives, then it goes. |
 | `Esc` | Pause, and press again to resume. |
 
 You attack automatically in both cases; there is no attack input, ever. And you
 never tap to buy: you walk onto a pad and stay there.
+
+**Vibration** answers a purchase, a hit on the Brood Chamber, a knockdown, and
+the open and close of a night. It rides the Vibration API, which Android
+implements and iOS Safari does not, so on an iPhone there is nothing to feel and
+the setting is hidden. Nothing the game has to say is said by the motor alone.
 
 **Tutorial** on the title screen runs a guided sixteen-step version of a real
 day and night. It never writes the save.
