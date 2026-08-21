@@ -132,7 +132,14 @@ hud.onTutorialNext = () => {
 hud.onTutorialQuit = () => endTutorial();
 
 input.onFirstPointer = () => audio.unlock();
-input.onPauseKey = () => (overlays.shown === 'pause' ? resume() : pause());
+input.onPauseKey = () => {
+  if (overlays.shown !== 'pause') {
+    pause();
+    return;
+  }
+  // Escape leaves an open panel before it leaves the pause sheet.
+  if (!overlays.back()) resume();
+};
 input.onDebugKey = (code) => {
   if (!debug.enabled) return;
   if (code === 'KeyG') debug.grantSugar(1000);
