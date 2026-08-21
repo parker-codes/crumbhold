@@ -72,6 +72,7 @@ const overlays = new Overlays(
     onStart: () => startRun(newSeed()),
     onTutorial: () => startTutorial(),
     onResume: () => resume(),
+    onQuit: () => quitToTitle(),
     onRetry: () => startRun(newSeed()),
     onContinueEndless: () => {
       sim.state.endless = true;
@@ -237,6 +238,29 @@ function pause(): void {
   persist();
 }
 
+/**
+ * Leaves the run and shows the title, where it comes back as "Resume run". The
+ * save is written before the phase reads 'title', because `persist` only counts
+ * a run as live while its phase says so.
+ */
+function quitToTitle(): void {
+  // A tutorial has no run to park, and its cheat switch must come back off.
+  if (sim.tutorial) {
+    endTutorial();
+    return;
+  }
+  persist();
+  started = false;
+  loop.paused = true;
+  canvas.style.filter = '';
+  hud.clearToast();
+  audio.setMusic('off');
+  overlays.setHasSavedRun(save.activeRun !== null);
+  overlays.show('title', null);
+  sim.state.phase = 'title';
+  releaseWakeLock();
+}
+
 function onPhaseChange(prev: Phase, next: Phase): void {
   void prev;
   if (next === 'win' || next === 'lose') {
@@ -260,7 +284,10 @@ function persist(): void {
   // A tutorial must never overwrite a real run.
   if (sim.tutorial) return;
   const live = started && st.phase !== 'win' && st.phase !== 'lose' && st.phase !== 'title';
-  save.activeRun = live ? serializeRun(st) : null;
+  // Only a live run rewrites the slot. Clearing it belongs to the places where a
+  // run really ends — win, lose, and starting a new one — so that parking at the
+  // title, or the pagehide that follows, cannot throw the parked run away.
+  if (live) save.activeRun = serializeRun(st);
   save.settings = sim.settings;
   writeSave(save);
 }

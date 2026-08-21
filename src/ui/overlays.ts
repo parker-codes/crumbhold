@@ -19,6 +19,7 @@ export interface OverlayCallbacks {
   onStart(): void;
   onTutorial(): void;
   onResume(): void;
+  onQuit(): void;
   onRetry(): void;
   onContinueEndless(): void;
   onSettingChange(patch: Partial<Settings>): void;
@@ -144,6 +145,8 @@ export class Overlays {
       card.appendChild(rows);
     }
     card.appendChild(button('big', 'Resume', () => this.callbacks.onResume()));
+    // The run is kept: the title screen offers it back as "Resume run".
+    card.appendChild(button('ghost', 'Quit to title', () => this.callbacks.onQuit()));
     card.appendChild(foot(
       button('ghost', 'Settings', () => this.open('settings')),
       button('ghost', 'How to play', () => this.open('help')),
