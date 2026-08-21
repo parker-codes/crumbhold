@@ -3,6 +3,7 @@ import { SIM_DT } from '../src/engine/loop';
 import { ECONOMY, STACK } from '../src/game/balance';
 import { broodTier, structureAt, tierOf } from '../src/game/state';
 import { Sim } from '../src/game/sim';
+import { step } from '../src/game/step';
 import { pads } from '../src/game/systems/pads';
 import { addToStack } from '../src/game/systems/stack';
 import type { SiteId } from '../src/game/gallery';
@@ -155,5 +156,55 @@ describe('mortar pile', () => {
     expect(barricade.hp).toBeGreaterThan(0);
     expect(barricade.glowcaps).toBe(barricade.tier);
     expect(pad.buildable).toBe('barricade');
+  });
+});
+
+describe('spending grace after a purchase', () => {
+  /** Parks her on a pad with sugar in hand and runs the ordered system pass. */
+  function dwell(sim: Sim, id: SiteId, seconds: number, onStep?: () => void): void {
+    const pad = sim.state.pads.find((p) => p.id === id)!;
+    const steps = Math.round(seconds / SIM_DT);
+    for (let i = 0; i < steps; i++) {
+      sim.state.warden.stack.sugar = 25;
+      sim.state.warden.pos.x = pad.pos.x;
+      sim.state.warden.pos.y = pad.pos.y;
+      step(sim, SIM_DT);
+      onStep?.();
+    }
+  }
+
+  it('stops taking sugar for a beat once a level is bought', () => {
+    const sim = new Sim(7);
+    const pad = sim.state.pads.find((p) => p.id === 'spitter1')!;
+    let paidDuringLock = 0;
+    let bought = false;
+    dwell(sim, 'spitter1', 4, () => {
+      const tier = sim.state.structures.find((s) => s.site === 'spitter1')?.tier ?? 0;
+      if (!bought && tier >= 1) {
+        bought = true;
+        // The lock is set the instant the purchase lands.
+        expect(pad.payLockUntil).toBeGreaterThan(sim.state.time);
+      }
+      if (bought && sim.state.time < pad.payLockUntil) paidDuringLock += pad.paid;
+    });
+    expect(bought).toBe(true);
+    // A player standing still through the completion buys nothing more until the
+    // grace expires, so stepping off is always possible.
+    expect(paidDuringLock).toBe(0);
+  });
+
+  it('resumes spending once the grace expires', () => {
+    const sim = new Sim(7);
+    const pad = sim.state.pads.find((p) => p.id === 'spitter1')!;
+    // Asserted against the grace itself rather than against reaching level 2,
+    // which would move the moment a cost table changed.
+    let paidAfterLock = 0;
+    let bought = false;
+    dwell(sim, 'spitter1', 4, () => {
+      if ((sim.state.structures.find((s) => s.site === 'spitter1')?.tier ?? 0) >= 1) bought = true;
+      if (bought && sim.state.time > pad.payLockUntil) paidAfterLock = pad.paid;
+    });
+    expect(bought).toBe(true);
+    expect(paidAfterLock).toBeGreaterThan(0);
   });
 });

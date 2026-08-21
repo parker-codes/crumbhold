@@ -1,5 +1,5 @@
 import { TIME } from './balance';
-import { ROOT_FRINGE, SITE_BY_ID, type SiteId } from './gallery';
+import { BROOD_POS, ROOT_FRINGE, SITE_BY_ID, type SiteId } from './gallery';
 import { structureAt, tierOf } from './state';
 import { startNight } from './systems/phase';
 import type { Sim } from './sim';
@@ -32,6 +32,12 @@ export interface TutorialStep {
   detail: string;
   /** Where the pheromone trail points. */
   target?: SiteId | TrailTarget;
+  /**
+   * A moving target, resolved every frame. Used where the thing to walk to is
+   * not a fixed site — the loot on the floor moves as it is collected, and a
+   * trail aimed at the middle of the room would point at nothing.
+   */
+  aim?(sim: Sim): TrailTarget | null;
   /** Runs once when the step opens. */
   enter?(sim: Sim, run: Tutorial): void;
   /**
@@ -53,52 +59,52 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'Move',
     instruction: 'Follow the green trail to the Aphid Pen.',
-    detail: 'Drag the left side of the screen to walk, or use WASD. The trail always points at your next job.',
+    detail: 'You are the Warden. Drag the left side of the screen to walk, or use WASD. The green trail always points at your next job.',
     target: 'aphidA',
     done: (sim) => atPad(sim, 'aphidA', 1.6),
   },
   {
     chapter: 'Gather',
     instruction: 'Wait here until you are carrying a honeydew droplet.',
-    detail: 'The pen drops one every 4 seconds. Anything within about 70 units jumps to you on its own — there is no pickup button.',
+    detail: 'Aphids give one droplet every 4 seconds. Anything on the floor near you jumps to you on its own, so there is no pickup button.',
     target: 'aphidA',
     done: (sim) => sim.state.warden.stack.honeydew >= 1,
   },
   {
-    chapter: 'Convert',
-    instruction: 'Carry the droplet to the Nectar Vat.',
-    detail: 'Honeydew buys nothing by itself. The vat pays you 8 sugar for each drop, and more at higher tiers.',
-    target: 'nectarVat',
-    enter: (sim, run) => run.mark('converted', sim.state.stats.sugarConverted),
-    done: (sim, run) => sim.state.stats.sugarConverted > run.marked('converted'),
-  },
-  {
-    chapter: 'Gather',
-    instruction: 'Stand next to the hanging roots and cut a leaf scrap.',
-    detail: 'Roots are the other half of the day. They regrow on a timer, so you can come back to them every day.',
-    target: ROOT_FRINGE,
-    done: (sim) => sim.state.warden.stack.leaf >= 1,
-  },
-  {
-    chapter: 'Convert',
-    instruction: 'Take the scraps to the Fungus Garden.',
-    detail: 'It pays 10 sugar a scrap. Together the vat and the garden are worth roughly a fifth of what a run earns.',
-    target: 'fungusGarden',
-    enter: (sim, run) => run.mark('converted2', sim.state.stats.sugarConverted),
-    done: (sim, run) => sim.state.stats.sugarConverted > run.marked('converted2'),
-  },
-  {
     chapter: 'Spend',
-    instruction: 'Stand on the Spitter Post pad and stay there.',
-    detail: 'Sugar lifts off your stack at 14 a second. Walk away early and what you already paid stays on the pad.',
+    instruction: 'Stand on the Spitter Post pad until it finishes building.',
+    detail: 'A Spitter Post sprays acid at one enemy at a time, on its own, forever. Standing on a pad pays for it; step off and whatever you paid stays there.',
     target: 'spitter1',
     fund: 'spitter1',
     done: (sim) => tierOf(sim.state, 'spitter1') >= 1,
   },
   {
+    chapter: 'Convert',
+    instruction: 'Carry your honeydew to the Nectar Vat.',
+    detail: 'Honeydew buys nothing on its own. The vat trades each droplet for 8 sugar. Sugar is the only thing you spend.',
+    target: 'nectarVat',
+    enter: (sim, run) => run.mark('honeydewSugar', sim.state.stats.sugarConverted),
+    done: (sim, run) => sim.state.stats.sugarConverted > run.marked('honeydewSugar'),
+  },
+  {
+    chapter: 'Gather',
+    instruction: 'Stand beside the hanging roots to cut a leaf scrap.',
+    detail: 'You cut automatically, the way you attack. A cut root grows back, so you can come here again every day.',
+    target: ROOT_FRINGE,
+    done: (sim) => sim.state.warden.stack.leaf >= 1,
+  },
+  {
+    chapter: 'Convert',
+    instruction: 'Carry the leaf scraps to the Fungus Garden.',
+    detail: 'The garden trades each leaf scrap for 10 sugar. If your sugar is already full, spend some first — a full stack cannot take any more.',
+    target: 'fungusGarden',
+    enter: (sim, run) => run.mark('leafSugar', sim.state.stats.sugarConverted),
+    done: (sim, run) => sim.state.stats.sugarConverted > run.marked('leafSugar'),
+  },
+  {
     chapter: 'Defend',
-    instruction: 'Plug the north tunnel with a Resin Barricade.',
-    detail: 'From night five, mole crickets arrive that ignore you completely and eat buildings. A barricade is what stands in the way.',
+    instruction: 'Build the Resin Barricade in the north tunnel.',
+    detail: 'It blocks the tunnel. Mole crickets start arriving on night 5, and they ignore you completely and chew on your buildings instead. A barricade is what stops them.',
     target: 'barricadeN',
     fund: 'barricadeN',
     done: (sim) => tierOf(sim.state, 'barricadeN') >= 1,
@@ -106,7 +112,7 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'Defend',
     instruction: 'Build a Soldier Gallery.',
-    detail: 'It hatches majors that hold a post nearby, and they come back free every night. Buy it once and it pays for the whole run.',
+    detail: 'It hatches soldier ants that guard a spot near it. They respawn every night for the rest of the run at no extra cost, so buying one early pays off all game.',
     target: 'galleryA',
     fund: 'galleryA',
     done: (sim) => tierOf(sim.state, 'galleryA') >= 1,
@@ -114,7 +120,7 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'You',
     instruction: 'Build the Venom Well.',
-    detail: 'It is the only thing that upgrades you: 12 damage up to 24, and you fire faster. Roughly triples your output at tier 3.',
+    detail: 'This is the only upgrade for you, the Warden. It doubles your damage and makes you fire faster. Everything else you build defends the colony instead.',
     target: 'venomWell',
     fund: 'venomWell',
     done: (sim) => tierOf(sim.state, 'venomWell') >= 1,
@@ -122,7 +128,7 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'You',
     instruction: 'Build the Paddock, then press Mount to call the beetle.',
-    detail: 'It hauls faster, reaches further, and its horn tosses whatever you run through. You attack 15% slower while riding.',
+    detail: 'Ride the beetle to move faster, pick things up from further away, and carry more. You fire a little slower while riding, so it is for hauling.',
     target: 'paddock',
     fund: 'paddock',
     done: (sim) => sim.state.warden.mounted,
@@ -130,26 +136,26 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'Economy',
     instruction: 'Build the Hoard.',
-    detail: 'It cuts spoilage on the whole night, paying you 1.25 times the haul, then 1.5, then double. It multiplies every other income you have.',
+    detail: 'It keeps more of what you gather each night: 1.25 times at level 1, then 1.5, then double. It multiplies every other income you have.',
     target: 'hoard',
     fund: 'hoard',
     done: (sim) => tierOf(sim.state, 'hoard') >= 1,
   },
   {
     chapter: 'Progress',
-    instruction: 'Raise the Brood Chamber to tier 2.',
-    detail: 'Chamber tiers open the map: tier 2 adds a third Spitter site, tier 3 the Acid Battery, tier 4 a fourth Spitter. Locked pads show their requirement on the floor.',
+    instruction: 'Upgrade the Brood Chamber to level 2.',
+    detail: 'Chamber levels expand the map. Level 2 adds a third Spitter site, level 3 the Acid Battery, level 4 a fourth Spitter. Locked pads show their requirement underneath.',
     target: 'brood',
     fund: 'brood',
     done: (sim) => tierOf(sim.state, 'brood') >= 2,
   },
   {
     chapter: 'The day',
-    instruction: 'Press End day when you are ready.',
-    detail: 'A real day lasts 45 seconds and the daylight shaft crossing the floor is the clock. Ending early pays 15% more sugar on the night ahead.',
+    instruction: 'Press End day, at the top right, to start the night now.',
+    detail: 'A real day lasts 45 seconds, and the band of daylight crossing the floor is your clock. Ending early gives you 15% more sugar for the night that follows.',
     ownsClock: true,
     enter: (sim) => {
-      // Hand the clock back so the shaft sweeps and the button offers End day.
+      // Hand the clock back so the shaft sweeps and End day appears.
       sim.state.phaseDuration = TIME.dayDuration;
       sim.state.phaseStartedAt = sim.state.time;
     },
@@ -158,14 +164,25 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'The night',
     instruction: 'Hold the tunnel until the last invader falls.',
-    detail: 'The bar under the band is the chamber’s health. Pips count the waves left, and chevrons on the screen edge point at invaders off screen.',
+    detail: 'Every invader you kill drops sugar. The bar under the band is the chamber\u2019s health, the pips count the waves left, and arrows at the screen edge point at invaders you cannot see.',
     enter: (sim) => scriptFirstNight(sim),
     done: (sim) => sim.state.phase !== 'night',
   },
   {
+    chapter: 'Collect',
+    instruction: 'Pick up the sugar the invaders dropped.',
+    detail: 'This is where most of your money comes from. Killing pays better than gathering, so clearing a night is also how you afford the next one.',
+    aim: (sim) => nearestSugar(sim),
+    enter: (sim, run) => {
+      run.mark('collected', sim.state.stats.sugarEarned);
+      ensureSpoils(sim);
+    },
+    done: (sim, run) => sim.state.stats.sugarEarned > run.marked('collected') + 1,
+  },
+  {
     chapter: 'Repair',
-    instruction: 'Stand on the Mortar Pile to patch what took damage.',
-    detail: 'Damage stays until you pay for it. 8 HP per sugar, most damaged first. A structure knocked to zero is breached, not lost — patch it and it works again.',
+    instruction: 'Stand on the Mortar Pile to repair what got damaged.',
+    detail: 'Damage stays until you pay to fix it, and the most damaged building is repaired first. A building knocked to zero stops working but is never lost \u2014 repair it and it comes back.',
     target: 'mortar',
     enter: (sim) => bruiseSomething(sim),
     fund: 'mortar',
@@ -174,7 +191,7 @@ const STEPS: readonly TutorialStep[] = [
   {
     chapter: 'Done',
     instruction: 'That is the whole game. Hold the Brood Chamber for twelve nights.',
-    detail: 'A full run earns about 80% of what the build tree costs, so you can never have everything. Deciding what to give up is the game.',
+    detail: 'You will only ever earn about 80% of what everything costs, so you cannot build it all. Choosing what to leave out is the game.',
   },
 ];
 
@@ -198,7 +215,9 @@ export class Tutorial {
 
   /** Where the trail should point, in world space, or null for no trail. */
   trail(sim: Sim): TrailTarget | null {
-    const target = this.step.target;
+    const step = this.step;
+    if (step.aim) return step.aim(sim);
+    const target = step.target;
     if (!target) return null;
     if (typeof target !== 'string') return target;
     const pad = sim.state.pads.find((p) => p.id === target);
@@ -331,6 +350,46 @@ function scriptFirstNight(sim: Sim): void {
   st.spawnCursor = 0;
   st.subWaveCount = 3;
   st.spawnWindow = 12;
+}
+
+/**
+ * The collect lesson needs something to collect. Night drops expire and the
+ * tally only scatters a bonus when the player banked something, so a player who
+ * ignored the floor all night could arrive here to an empty room.
+ */
+function ensureSpoils(sim: Sim): void {
+  const st = sim.state;
+  let onFloor = 0;
+  for (const p of st.pickups) if (p.alive && p.kind === 'sugar') onFloor++;
+  if (onFloor >= 4) return;
+  for (let i = onFloor; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    // Inside a short walk of the chamber, not ringed outside pickup range of it.
+    const r = 60 + (i % 3) * 30;
+    const p = sim.spawnPickup(
+      'sugar',
+      BROOD_POS.x + Math.cos(angle) * r,
+      BROOD_POS.y + Math.sin(angle) * r,
+      5,
+    );
+    if (p) p.expiresAt = null;
+  }
+}
+
+/** The closest crystal still on the floor, so the trail follows the loot. */
+function nearestSugar(sim: Sim): TrailTarget | null {
+  const w = sim.state.warden.pos;
+  let best: TrailTarget | null = null;
+  let bestDist = Infinity;
+  for (const p of sim.state.pickups) {
+    if (!p.alive || p.kind !== 'sugar') continue;
+    const d = (p.pos.x - w.x) ** 2 + (p.pos.y - w.y) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = { x: p.pos.x, y: p.pos.y };
+    }
+  }
+  return best;
 }
 
 /**

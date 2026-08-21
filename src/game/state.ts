@@ -129,6 +129,7 @@ function makePad(siteId: SiteId, currentTier: number): Pad {
     tickAccum: 0,
     ringFlash: 0,
     shortfallFlash: 0,
+    payLockUntil: 0,
   };
 }
 

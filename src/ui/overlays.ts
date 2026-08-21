@@ -132,6 +132,10 @@ export class Overlays {
   private buildSettings(): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'rows';
+    wrap.appendChild(toggle('Ambient music', this.settings.music, (on) => {
+      this.settings.music = on;
+      this.callbacks.onSettingChange({ music: on });
+    }));
     wrap.appendChild(toggle('Sound', this.settings.audio, (on) => {
       this.settings.audio = on;
       this.callbacks.onSettingChange({ audio: on });
@@ -174,7 +178,7 @@ function summary(sim: Sim): HTMLElement {
 /**
  * Names the most expensive thing the player could have built and did not. Locked
  * sites are excluded: "you never built the Acid Battery" is not useful advice
- * when the Brood Chamber never reached the tier that unlocks it.
+ * when the Brood Chamber never reached the level that unlocks it.
  */
 function biggestGap(sim: Sim): string | null {
   const st = sim.state;

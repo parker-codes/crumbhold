@@ -64,6 +64,7 @@ export class Sim {
   };
   settings: Settings = {
     audio: true,
+    music: false,
     hudScale: 1,
     highContrast: false,
     nightBrightness: 0,
@@ -82,6 +83,8 @@ export class Sim {
   invulnerable = false;
   /** Set the first time the Mortar Pile is used, which retires its trail hint. */
   mortarUsed = false;
+  /** Rate limit for the "sugar is full" conversion hint. */
+  nextFullHintAt = 0;
   /** 1 = full detail, 0.5 = degraded after sustained slow frames. */
   quality = 1;
 

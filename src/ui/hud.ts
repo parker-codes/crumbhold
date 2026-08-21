@@ -1,6 +1,6 @@
 import { STACK, TIME } from '../game/balance';
 import { capacityFor, tierOf } from '../game/state';
-import { actionCooldown, actionLabel, currentAction } from '../game/systems/actions';
+import { actionCooldown, actionLabel, canEndDay, currentAction } from '../game/systems/actions';
 import { broodHealth } from '../game/systems/phase';
 import { currentSubWave } from '../game/systems/spawn';
 import type { Sim } from '../game/sim';
@@ -8,7 +8,8 @@ import type { Pad } from '../game/types';
 import type { View } from '../render/view';
 import { Onboarding } from './onboarding';
 
-const SUGAR_GLYPH = `<svg class="chip__glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 21 12l-9 10.5L3 12z" fill="#f5c147" stroke="#22212b" stroke-width="2.4" stroke-linejoin="round"/></svg>`;
+// A tall pale prism with a gold edge, matching the crystal on the floor.
+const SUGAR_GLYPH = `<svg class="chip__glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 19 12l-7 10.5L5 12z" fill="#eef1f2" stroke="#d9a63f" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 const DROP_GLYPH = `<svg class="chip__glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c4 6 6.5 8.6 6.5 12A6.5 6.5 0 0 1 12 20.5 6.5 6.5 0 0 1 5.5 14C5.5 10.6 8 8 12 2z" fill="#ffd98a" stroke="#22212b" stroke-width="2.2"/></svg>`;
 const LEAF_GLYPH = `<svg class="chip__glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21C3 10 10 3 21 3c0 11-7 18-18 18z" fill="#8fc95a" stroke="#22212b" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 
@@ -31,6 +32,7 @@ export class Hud {
   private readonly actionText: HTMLElement;
   private readonly actionWipe: HTMLElement;
   private readonly pauseBtn: HTMLButtonElement;
+  private readonly endDayBtn: HTMLButtonElement;
   private readonly stick: HTMLElement;
   private readonly stickKnob: HTMLElement;
   private readonly labelLayer: HTMLElement;
@@ -66,6 +68,7 @@ export class Hud {
   /** Advance a read-and-continue step, or step past one that is stuck. */
   onTutorialNext: (() => void) | null = null;
   onTutorialQuit: (() => void) | null = null;
+  onEndDay: (() => void) | null = null;
 
   constructor(root: HTMLElement) {
     root.innerHTML = '';
@@ -100,6 +103,17 @@ export class Hud {
       this.onPause?.();
     });
     root.appendChild(this.pauseBtn);
+
+    // Ending the day gets its own control beside Pause, so it is always in the
+    // same place and never competes with Rally or Mount for the one button.
+    this.endDayBtn = el('button', 'btn btn--endday') as HTMLButtonElement;
+    this.endDayBtn.type = 'button';
+    this.endDayBtn.innerHTML = '<span>End day</span>';
+    this.endDayBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.onEndDay?.();
+    });
+    root.appendChild(this.endDayBtn);
 
     this.actionBtn = el('button', 'btn btn--action') as HTMLButtonElement;
     this.actionBtn.type = 'button';
@@ -408,6 +422,11 @@ export class Hud {
     this.actionBtn.classList.toggle('hidden', kind === 'none');
     this.actionBtn.disabled = kind === 'none' || cooldown > 0;
     this.actionWipe.style.setProperty('--wipe', `${cooldown}turn`);
+
+    const canEnd = canEndDay(sim);
+    this.endDayBtn.classList.toggle('hidden', !canEnd);
+    // The tutorial asks for this control by name, so it says which one it means.
+    this.endDayBtn.classList.toggle('nudge', canEnd && sim.tutorial?.step.ownsClock === true);
   }
 
   private updateStick(sim: Sim): void {

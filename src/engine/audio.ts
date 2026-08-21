@@ -14,6 +14,11 @@ export class AudioBus {
   private musicMode: 'day' | 'night' | null = null;
 
   enabled = true;
+  /**
+   * The ambient bed, separate from the action sounds. Off by default: it is a
+   * sustained drone, and the sounds that carry information are the short ones.
+   */
+  music = false;
   /** Rising-pitch ladder for consecutive pickups (spec section 13). */
   private ladder = 0;
   private ladderAt = 0;
@@ -40,6 +45,18 @@ export class AudioBus {
     const data = buffer.getChannelData(0);
     for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
     this.noiseBuffer = buffer;
+  }
+
+  /** Starts or silences the bed without disturbing the action sounds. */
+  setMusicEnabled(on: boolean, mode: 'day' | 'night'): void {
+    this.music = on;
+    if (!on) {
+      this.musicMode = null;
+      const ctx = this.ctx;
+      if (ctx && this.musicGain) this.musicGain.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
+      return;
+    }
+    this.setMusic(mode);
   }
 
   setEnabled(on: boolean): void {
@@ -143,7 +160,7 @@ export class AudioBus {
   setMusic(mode: 'day' | 'night' | 'off'): void {
     const ctx = this.ctx;
     if (!ctx || !this.musicGain) return;
-    if (mode === 'off') {
+    if (mode === 'off' || !this.music) {
       this.musicGain.gain.setTargetAtTime(0, ctx.currentTime, 0.4);
       this.musicMode = null;
       return;
@@ -176,7 +193,7 @@ export class AudioBus {
 
   /** Called once per frame; drops the faint colony clicks under the music bed. */
   tickAmbience(dt: number): void {
-    if (!this.ctx || !this.enabled || this.musicMode === null) return;
+    if (!this.ctx || !this.enabled || !this.music || this.musicMode === null) return;
     this.musicTimer -= dt;
     if (this.musicTimer > 0) return;
     this.musicTimer = 0.18 + Math.random() * 0.6;

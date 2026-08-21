@@ -1,13 +1,18 @@
 import { COMBAT } from '../balance';
 import { tierOf } from '../state';
-import { readyEarly } from './phase';
 import type { Sim } from '../sim';
 
-export type ActionKind = 'trail' | 'drum' | 'dismount' | 'ready' | 'none';
+export type ActionKind = 'trail' | 'drum' | 'dismount' | 'none';
 
 /**
  * One context-sensitive action button. Priority when several contexts are live:
- * Trail > Drum > Ready (section 6).
+ * Rally > Mount > Dismount.
+ *
+ * Ending the day is deliberately NOT in this list. Under the section 6 priority
+ * it sat below Drum, which meant that buying a Paddock permanently removed the
+ * early-end bonus from the run: on foot in daylight the button was always Drum,
+ * so Ready could never come up again. It has its own control beside Pause now,
+ * where it is always in the same place and always reachable.
  */
 export function currentAction(sim: Sim): ActionKind {
   const st = sim.state;
@@ -17,10 +22,16 @@ export function currentAction(sim: Sim): ActionKind {
   }
   if (st.warden.mounted) return 'dismount';
   if (st.beetle.owned) return 'drum';
-  // A guided tutorial holds the day open on purpose, so End day is offered only
-  // on the step that teaches it. Otherwise one tap would skip the lesson.
-  if (st.phase === 'day' && (!sim.tutorial || sim.tutorial.step.ownsClock)) return 'ready';
   return 'none';
+}
+
+/** True while ending the day early is a thing the player can actually do. */
+export function canEndDay(sim: Sim): boolean {
+  const st = sim.state;
+  if (st.phase !== 'day' || st.warden.knockedUntil > st.time) return false;
+  // A guided tutorial parks the day clock on purpose, so the control appears
+  // only on the step that teaches it. Otherwise one tap would skip the lesson.
+  return !sim.tutorial || sim.tutorial.step.ownsClock === true;
 }
 
 /**
@@ -33,7 +44,6 @@ export function actionLabel(kind: ActionKind): string {
     case 'trail': return 'Rally';
     case 'drum': return 'Mount';
     case 'dismount': return 'Dismount';
-    case 'ready': return 'End day';
     default: return '';
   }
 }
@@ -71,10 +81,6 @@ export function actions(sim: Sim, _dt: number): void {
       st.beetle.vel.x = 0;
       st.beetle.vel.y = 0;
       sim.sound('mount', -6);
-      break;
-    }
-    case 'ready': {
-      readyEarly(sim);
       break;
     }
     default:

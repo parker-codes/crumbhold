@@ -5,6 +5,7 @@ import { Viewport, requestWakeLock } from './engine/viewport';
 import { CAPS } from './game/balance';
 import { Sim } from './game/sim';
 import { step } from './game/step';
+import { readyEarly } from './game/systems/phase';
 import { Tutorial } from './game/tutorial';
 import { loadSave, serializeRun, writeSave } from './game/save';
 import type { Phase, SaveFile } from './game/types';
@@ -20,6 +21,7 @@ const overlayRoot = document.getElementById('overlay') as HTMLElement;
 const save: SaveFile = loadSave();
 const audio = new AudioBus();
 audio.enabled = save.settings.audio;
+audio.music = save.settings.music;
 
 const sim = new Sim(newSeed(), audio);
 sim.settings = save.settings;
@@ -69,6 +71,9 @@ const overlays = new Overlays(
       Object.assign(sim.settings, patch);
       save.settings = sim.settings;
       if (patch.audio !== undefined) audio.setEnabled(patch.audio);
+      if (patch.music !== undefined) {
+        audio.setMusicEnabled(patch.music, sim.state.phase === 'night' ? 'night' : 'day');
+      }
       if (patch.hudScale !== undefined) {
         document.documentElement.style.setProperty('--hud-scale', String(patch.hudScale));
       }
@@ -97,6 +102,10 @@ hud.onAction = () => {
   input.queueAction();
 };
 hud.onPause = () => pause();
+hud.onEndDay = () => {
+  audio.unlock();
+  readyEarly(sim);
+};
 hud.onTutorialNext = () => {
   sim.tutorial?.advance();
   if (sim.tutorial?.finished) endTutorial();

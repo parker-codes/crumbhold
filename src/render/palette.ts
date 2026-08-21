@@ -34,8 +34,17 @@ export const NIGHT = {
 
 /** Fixed across both palettes. */
 export const FIXED = {
+  /** The money colour: costs, counters, brood cells. */
   sugar: 0xf5c147,
   sugarDeep: 0xc48a16,
+  /**
+   * The crystal itself, which is not the money colour. Sugar read as amber was
+   * indistinguishable from a honeydew droplet at a glance; real sugar is a
+   * near-white prism that refracts warm, so the body is pale and the outline
+   * keeps the gold so it still ties to the economy.
+   */
+  sugarCrystal: 0xeef1f2,
+  sugarFacet: 0xd9a63f,
   colony: 0x2e6f8e,
   foe: 0xc2405b,
   foeDark: 0x8a2039,

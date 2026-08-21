@@ -45,20 +45,23 @@ mechanic in the real gallery, one step at a time, and it does not touch your
 saved run.
 
 **Touch.** Drag anywhere in the lower-left to walk; the joystick appears wherever
-your thumb lands. One button, bottom right. Pause, top right.
+your thumb lands. One action button, bottom right. **End day** and **Pause** sit
+together at the top right.
 
-**Keyboard.** `W` `A` `S` `D` or the arrow keys to walk, `Space` for the button,
-`Esc` to pause.
+**Keyboard.** `W` `A` `S` `D` or the arrow keys to walk, `Space` for the action
+button, `Esc` to pause.
 
-The button changes with the situation, and when several apply it picks the most
-urgent:
+The action button changes with the situation, and when several apply it picks the
+most urgent:
 
 | Button | When | Does |
 | --- | --- | --- |
-| **Rally** | At night, once you own a Soldier Gallery | Calls every major to you for 6 seconds, then they walk back to their posts. 12 second cooldown. |
+| **Rally** | At night, once you own a Soldier Gallery | Calls every soldier to you for 6 seconds, then they walk back to their posts. 12 second cooldown. |
 | **Mount** | On foot, once you own the Paddock | Calls the beetle. It scuttles over and you mount on contact. |
 | **Dismount** | While mounted | Get off. The beetle waits where you leave it. |
-| **End day** | Daytime, nothing else pending | Starts the night early for the sugar bonus. |
+
+**End day** is a separate control at the top right, not on the action button, so
+it is always in the same place and never crowded out by Rally or Mount.
 
 ## The stack is the interface
 
@@ -86,6 +89,10 @@ work the pens.
 counter flashes. Nothing is destroyed, but nothing is gained either, so a full
 stack means you are wasting the floor. Go spend.
 
+This catches people on day one, because you *start* with a full stack of 25. Until
+you spend some, the Nectar Vat and the Fungus Garden have nowhere to put the sugar
+they owe you and will tell you so.
+
 ## Spending: stand, don't tap
 
 You never tap to buy. Every buildable sits on a pad on the floor. **Walk onto the
@@ -93,6 +100,8 @@ pad and stay there**, and sugar lifts off your stack into it at 14 per second.
 
 - Progress is kept. Leave at 18 of 25 paid and it is still 18 when you come back.
   No refunds, no decay. Most things get paid across two or three visits.
+- The moment a level finishes, the pad stops taking sugar for a second, so you
+  can step off without buying into the next level by accident.
 - Walking *across* a pad pays into it. Mind your route when you are saving up.
 - Standing on a pad with nothing to give just shows you the shortfall.
 
@@ -103,55 +112,55 @@ because there does not need to be one.
 
 ## What you can build
 
-Everything upgrades in place. Each tier sprouts one more luminous **glowcap**, so
+Everything upgrades in place. Each level sprouts one more luminous **glowcap**, so
 a well-developed colony is literally brighter at night than a neglected one —
 glance at the room and you know how the run is going.
 
 ### Defence
 
-| Building | Cost per tier | What it does |
+| Building | Cost per level | What it does |
 | --- | --- | --- |
 | **Resin Barricade** | 25 / 60 / 130 | Plugs a tunnel. 300, 600, then 1100 HP of stuff they have to chew through instead of walking past. One per tunnel. |
 | **Spitter Post** | 30 / 70 / 150 | Single-target acid sprayer. 8 → 18 damage, and reach grows from 300 to 380. Four sites. |
 | **Acid Battery** | 180 / 380 | A piercing jet: one shot through 3 or 4 bodies at once, 45 or 70 damage. Slow. Made for heavies in a line. Needs Brood 3. |
-| **Soldier Gallery** | 45 / 110 / 240 | Hatches majors that hold a scent marker nearby. Two sites. |
+| **Soldier Gallery** | 45 / 110 / 240 | Hatches soldier ants that guard a spot nearby. Two sites. |
 
 ### Economy
 
-| Building | Cost per tier | What it does |
+| Building | Cost per level | What it does |
 | --- | --- | --- |
 | **The Hoard** | 70 / 160 / 330 | Cuts spoilage, so you keep more of the night's haul: ×1.25, ×1.5, then ×2.0 on the tally. |
 | **Nectar Vat** | free / 90 / 200 | Honeydew into sugar: 8, 12, then 18 apiece. |
 | **Fungus Garden** | free / 150 | Leaf scraps into sugar: 10, then 16 apiece. |
-| **Aphid Pen** | free / 65 | A droplet every 4 seconds, or every 2.5 at tier 2. Two pens. |
+| **Aphid Pen** | free / 65 | A droplet every 4 seconds, or every 2.5 at level 2. Two pens. |
 
 ### You
 
-| Building | Cost per tier | What it does |
+| Building | Cost per level | What it does |
 | --- | --- | --- |
-| **Venom Well** | 80 / 180 / 380 | Your damage 12 → 24, and your interval 0.55 → 0.40s. Roughly triples your output at tier 3. |
-| **Paddock** | 60 / 150 | Unlocks the beetle. Tier 2 makes it faster, hits harder, and adds 10 sugar capacity while mounted. |
+| **Venom Well** | 80 / 180 / 380 | Your damage 12 → 24, and your interval 0.55 → 0.40s. Roughly triples your output at level 3. |
+| **Paddock** | 60 / 150 | Unlocks the beetle. Level 2 makes it faster, hits harder, and adds 10 sugar capacity while mounted. |
 
 ### The centre
 
-| Building | Cost per tier | What it does |
+| Building | Cost per level | What it does |
 | --- | --- | --- |
-| **Brood Chamber** | free / 80 / 200 / 450 / 900 | 600 HP up to 3600, and it gates the map: **tier 2** opens a third Spitter site, **tier 3** the Acid Battery, **tier 4** a fourth Spitter. Tier 5 adds +40 sugar every night held. |
+| **Brood Chamber** | free / 80 / 200 / 450 / 900 | 600 HP up to 3600, and it gates the map: **level 2** opens a third Spitter site, **level 3** the Acid Battery, **level 4** a fourth Spitter. Level 5 adds +40 sugar every night held. |
 | **Mortar Pile** | always open | Sugar into repairs, 8 HP per sugar, most damaged structure first. |
 
 **Damage is permanent until you pay for it.** Barricades, posts, galleries, and
-the chamber keep their wounds between nights. A structure knocked to zero is
-breached rather than destroyed: it stays on its site at its tier, stops working,
+the chamber keep their wounds between nights. A building knocked to zero is
+breached rather than destroyed: it stays on its site at its level, stops working,
 goes dark, and comes back the moment you patch it at the Mortar Pile. Repairing
 competes with expanding for the same sugar, and that tension is most of the
 mid-game.
 
 ## Your allies
 
-**Majors.** Hatched at a Soldier Gallery, they walk to a scent marker and hold
+**Soldiers.** Hatched at a Soldier Gallery, they walk to a guard spot and hold
 it, fighting anything within about 140 units and returning when it is clear. They
-will not chase across the gallery. They re-hatch free at the start of every
-night, so a gallery is bought once and pays out for the whole run — which makes
+will not chase across the gallery. They respawn at the start of every night at
+no extra cost, so a gallery is bought once and pays out for the whole run — which makes
 it the strongest early purchase in the game. Press **Rally** to pull them off
 their marker and onto whatever is actually hurting you.
 
@@ -163,7 +172,7 @@ killed and never needs repairing.
 **Knockdown, not death.** At zero health you curl up for 4 seconds, drop half of
 each resource you were carrying at your feet, and get dragged home by two
 workers. You revive at the chamber with 60% health and a moment of invulnerability.
-Your posts and majors keep fighting the whole time. Getting knocked down costs you
+Your posts and soldiers keep fighting the whole time. Getting knocked down costs you
 the load and the time, not the run.
 
 ## What comes down the tunnels
@@ -206,7 +215,7 @@ distracted player collects. Ignoring them is ignoring a Brood Chamber's worth of
 upgrades.
 
 **The Hoard is the real multiplier.** It cuts spoilage on the whole night's haul,
-so it compounds with every other source. At tier 3 it doubles the tally. Bought
+so it compounds with every other source. At level 3 it doubles the tally. Bought
 early it is the single largest lever on how much a run earns.
 
 **Barricades are for mole crickets, not for ants.** From night five something
@@ -214,17 +223,17 @@ arrives every night that ignores you entirely and eats your buildings. A barrica
 is what stands in its way while your posts work. Before night five they are much
 less urgent.
 
-**Raise the Brood Chamber for the map, not the health.** Tier 2 and 3 are cheap
+**Upgrade the Brood Chamber to expand the map, not for the health.** Levels 2 and 3 are cheap
 and they open a Spitter site and the Acid Battery. Those unlocks are worth more
 than the hit points.
 
 **Repair before you expand, once things start breaking.** A breached post is
-doing zero damage. Patching it is almost always cheaper than the next tier of
+doing zero damage. Patching it is almost always cheaper than the next level of
 something else.
 
 **Do not specialise.** Measured across twenty runs each: an all-towers colony with
 no economy dies around night seven, and an all-economy colony with no defence dies
-around night five. Both lose. A colony that keeps everything at tier two clears
+around night five. Both lose. A colony that keeps everything at level two clears
 night twelve most of the time.
 
 **You cannot build everything.** A full run earns roughly 80% of what the
@@ -249,5 +258,7 @@ giving up, not what comes next.
 
 In the pause menu: a night brightness slider if the glowlit gallery reads too
 dark, thicker high-contrast invader outlines, optional damage numbers, a larger
-HUD, and sound off. Reduced motion is picked up from your system settings and
-removes screen shake, particles, and overshoot.
+HUD, and sound off. Ambient music is a separate switch and starts **off** — the
+bed is a sustained drone, and the sounds that carry information are the short
+ones. Reduced motion is picked up from your system settings and removes screen
+shake, particles, and overshoot.

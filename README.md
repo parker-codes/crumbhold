@@ -38,7 +38,8 @@ key is ignored while a thumb is on the stick, so the two never fight.
 | Input | Action |
 | --- | --- |
 | Drag in the left 45 percent, bottom 70 percent | Move. The joystick appears where you touch. |
-| Action button, bottom right | Context sensitive: Rally, Mount, Dismount, or End day. |
+| Action button, bottom right | Context sensitive: Rally, Mount, or Dismount. Hidden when none apply. |
+| End day, top right | Starts the night early for the sugar bonus. Daytime only. |
 | Pause button, top right | Pause. Instant, free, no timer runs. |
 
 **Keyboard (desktop)**
@@ -60,7 +61,7 @@ as specified, not a misfire.
 
 ## Deviations from the spec
 
-Three, all deliberate.
+Four, all deliberate.
 
 1. **Three.js instead of Canvas 2D** (spec section 5 asks for one 2D context and
    zero runtime dependencies). Requested explicitly. The renderer is a top-down
@@ -74,7 +75,14 @@ Three, all deliberate.
    the "read your wealth from across the gallery" pillar. Fixing the vertical
    extent satisfies both and is also what section 5 asks of landscape: widen the
    viewport and letterbox. See `WORLD.viewUnits` in `balance.ts`.
-3. **A structure at 0 HP is breached, not deleted.** It keeps its site and tier,
+3. **End day is its own control, not a case on the action button.** Section 6
+   puts Ready in the action button's priority list below Drum. That makes it
+   unreachable: on foot in daylight with a Paddock owned, `currentAction` always
+   returns Drum, so buying a Paddock silently removed the early-end bonus from
+   every remaining day of the run. It now sits beside Pause, where it is always
+   in the same place and always available. `tests/controls.test.ts` covers the
+   regression.
+4. **A structure at 0 HP is breached, not deleted.** It keeps its site and tier,
    stops working, goes dark, and comes back at the Mortar Pile. Section 9.6 lists
    barricades, posts, galleries, and the chamber as structures whose damage
    persists between nights and are repaired most-damaged-first, which only holds

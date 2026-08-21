@@ -32,6 +32,9 @@ export function pads(sim: Sim, dt: number): void {
     }
     if (pad.kind === 'convert' && convert(sim, pad, dt)) continue;
     if (pad.state === 'complete') continue;
+    // A purchase that just landed holds spending for a beat, so standing still
+    // one moment too long cannot start paying into the next tier.
+    if (st.time < pad.payLockUntil) continue;
     charge(sim, pad, dt);
   }
 }
@@ -66,6 +69,7 @@ function complete(sim: Sim, pad: Pad): void {
   applyPurchase(sim.state, pad);
   pad.ringFlash = 0.4;
   pad.tickAccum = 0;
+  pad.payLockUntil = sim.state.time + STACK.payGrace;
   sim.sound('padComplete');
   sim.addShake(FX.padCompleteShake);
   sim.burst(pad.pos.x, pad.pos.y, FX.dustRingParticles, 0xa78d6b, 200, 5);
@@ -88,7 +92,13 @@ function convert(sim: Sim, pad: Pad, dt: number): boolean {
   const added = addToStack(sim, 'sugar', units * per);
   if (added <= 0) {
     // Sugar full: the conversion stalls rather than destroying the honeydew.
+    // Without a word of explanation this reads as a broken pad, because the
+    // player is standing on the right spot holding the right thing.
     pad.shortfallFlash = 0.4;
+    if (st.time >= sim.nextFullHintAt) {
+      sim.nextFullHintAt = st.time + FULL_HINT_COOLDOWN;
+      sim.hooks.onToast('Your sugar is full. Spend some, then come back.', 2.4);
+    }
     return true;
   }
   // Only consume the fraction of an item that actually fit.
@@ -114,6 +124,7 @@ function structureTier(sim: Sim, pad: Pad): number {
  * competing with expansion.
  */
 function repair(sim: Sim, pad: Pad, dt: number): void {
+  if (sim.state.time < pad.payLockUntil) return;
   const target = mostDamaged(sim);
   if (!target) return;
   const needed = target.maxHp - target.hp;
@@ -137,10 +148,14 @@ function repair(sim: Sim, pad: Pad, dt: number): void {
   }
   if (target.hp >= target.maxHp) {
     pad.ringFlash = 0.3;
+    pad.payLockUntil = sim.state.time + STACK.payGrace;
     sim.sound('padComplete', 4, 0.6);
   }
   if (target.kind === 'gallery' && target.hp > 0) sim.markLightingDirty();
 }
+
+/** Long enough not to nag while she stands there, short enough to be useful. */
+const FULL_HINT_COOLDOWN = 8;
 
 export function mostDamaged(sim: Sim): Structure | null {
   let worst: Structure | null = null;

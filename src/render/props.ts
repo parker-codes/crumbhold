@@ -74,12 +74,17 @@ export class ItemLayer {
   private readonly scale = new Vector3();
 
   constructor() {
+    // A tall prism rather than a regular octahedron: a sugar grain is monoclinic
+    // and reads as a shard, where an even eight-sided die reads as a gem.
     const crystal = new OctahedronGeometry(1, 0);
+    crystal.scale(0.74, 1.42, 0.74);
     this.sugar = instanced(crystal, new MeshLambertMaterial({
-      color: FIXED.sugar, emissive: FIXED.sugarDeep, emissiveIntensity: 0.35,
+      color: FIXED.sugarCrystal, emissive: FIXED.sugarCrystal, emissiveIntensity: 0.16,
     }), ITEM_CAP);
+    // The gold stays on the outline, so a crystal still belongs to the economy
+    // without being the same colour as a droplet of honeydew.
     this.sugarOutline = instanced(crystal, new MeshLambertMaterial({
-      color: FIXED.sugarDeep, side: BackSide,
+      color: FIXED.sugarFacet, side: BackSide,
     }), ITEM_CAP);
     this.honeydew = instanced(new SphereGeometry(1, 8, 6), new MeshLambertMaterial({
       color: FIXED.honeydew, transparent: true, opacity: 0.85,
