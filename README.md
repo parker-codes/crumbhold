@@ -1,19 +1,32 @@
 # Crumbhold
 
-Arcade idle plus lane tower defence, built from `CRUMBHOLD-SPEC.md`. Haul sugar by
-day, hold three tunnels after dark, twelve nights then endless.
+Arcade idle plus lane tower defence. Haul sugar by day, hold three tunnels after
+dark, twelve nights then endless.
 
 Portrait mobile web first, playable on desktop. Static site, no backend, no
 accounts, no network calls.
 
+New here? [GAME_INSTRUCTIONS.md](GAME_INSTRUCTIONS.md) covers the objective, the
+mechanics, every creature, and how to actually win. This file is the build and
+engineering notes.
+
+Requires [Bun](https://bun.sh) 1.3 or newer. Bun is the package manager and the
+script runner; there is no npm lockfile in the tree.
+
 ```bash
-npm install
-npm run dev        # dev server
-npm run build      # static bundle in dist/
-npm run preview    # serve the built bundle
-npm test           # unit tests
-npm run sim -- --strategy balanced --seeds 20   # headless balance harness
+bun install
+bun run dev        # dev server
+bun run build      # typecheck, then a static bundle in dist/
+bun run preview    # serve the built bundle
+bun run typecheck  # tsc --noEmit on its own
+bun run test       # unit tests, 74 of them
+bun run sim -- --strategy balanced --seeds 50   # headless balance harness
 ```
+
+Vite and Vitest still do the building and testing, per spec section 5, which
+limits dev dependencies to Vite, TypeScript, and Vitest. Bun replaces npm around
+them, and it runs `scripts/harness.ts` straight from TypeScript, so the harness
+needs no build step of its own.
 
 ## Controls
 
@@ -70,6 +83,10 @@ Two smaller notes:
 - The section 10.4 threat table drifts up to two points from its own formula from
   night 7 on. `threat(n) = round(40 * 1.32^(n-1))` is the stated source of truth
   and is what ships; `tests/waves.test.ts` asserts both.
+- Section 10.7 prints a full build cost of 6355, but its own breakdown counts
+  three Spitter Post sites where section 7 lists four, so the printed figure is
+  250 light. The harness derives the total from the cost tables instead, which
+  comes to 6605 and cannot drift when a cost or a site changes.
 - The display and UI faces are **Rowdies** and **Chivo** per section 12, declared
   in `src/ui/style.css` with heavy rounded and tabular fallbacks. Drop the
   subsetted woff2 files in and add the `@font-face` rules to pick them up; no
@@ -85,7 +102,7 @@ src/
   render/   scene, floor, lighting, creatures, structuresView, padsView,
             props, palette, view
   ui/       hud, overlays, onboarding, debug, style.css
-scripts/    harness.ts, bot.ts   headless balance tooling
+scripts/    harness.ts, bot.ts   headless balance tooling, run by Bun directly
 tests/      vitest, no DOM
 ```
 
@@ -95,20 +112,29 @@ a separate pass that reads state and mutates nothing.
 
 ## Balance
 
-`npm run sim` drives the real systems through a scripted bot, so the numbers come
+`bun run sim` drives the real systems through a scripted bot, so the numbers come
 from the game and not from a spreadsheet.
 
 | Check | Spec target | Measured |
 | --- | --- | --- |
-| Economy ceiling at night 12 | 75 to 85 percent of the 6355 full build | 77 to 84 percent, economy-first play |
-| Spitters only | fails around night 7 | median night 8, 20 seeds |
+| Economy ceiling at night 12 | 75 to 85 percent of the full build | 80 percent, economy-first play, 50 seeds |
+| Spitters only | fails around night 7 | median night 7, 20 seeds |
 | Economy only | fails around night 5 | median night 5, 20 seeds |
-| A built-out colony | reaches night 12 bruised | tier 2 everywhere clears 11 of 20 |
+| A built-out colony | reaches night 12 bruised | tier 2 everywhere clears 14 of 20 |
+
+Use at least 50 seeds, as section 20 asks. Small samples swing a couple of
+points, so a handful of runs is an anecdote rather than a measurement.
+
+Determinism is per engine. A seed replays exactly on the same runtime, which is
+what `tests/determinism.test.ts` asserts and what balance work needs. Wave
+composition is integer and PRNG work and comes out bit-identical across engines;
+the physics-heavy collection figures can move by about a point between
+JavaScriptCore and V8. The table above was measured under Bun.
 
 `ECONOMY.dropMultiplier` is the section 10.8 fix. At 1.0 the harness reproduces
-the spec's own 61 to 72 percent baseline; 1.3 lands the ceiling inside the target
-band. Raised on drops rather than cut from costs, so nights feel more rewarding
-instead of structures feeling cheap.
+the spec's own 61 to 72 percent baseline; 1.4 puts the ceiling at 80 percent,
+mid-band and stable across seed ranges. Raised on drops rather than cut from
+costs, so nights feel more rewarding instead of structures feeling cheap.
 
 Useful flags: `--seed`, `--seeds`, `--nights`, `--strategy`
 (`balanced` `spitters` `economy` `barricades`), `--prebuild <tier>`, `--invuln`,
@@ -128,4 +154,3 @@ sim, loop, and view.
   file, but there are no traits and no run-start selection.
 - Music is the ambient bed only: two synth pads on one root, major by day and
   minor at night, cross-faded, with the irregular clicking layer. No composition.
-# crumbhold
