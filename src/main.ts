@@ -1,3 +1,5 @@
+import { inject as injectAnalytics } from '@vercel/analytics';
+
 import { AudioBus } from './engine/audio';
 import { Input } from './engine/input';
 import { Loop } from './engine/loop';
@@ -11,6 +13,10 @@ import { View } from './render/view';
 import { DebugTools } from './ui/debug';
 import { Hud } from './ui/hud';
 import { Overlays } from './ui/overlays';
+
+// Vercel Web Analytics — visitor counts only. Its script is served from
+// /_vercel/insights on the deployment, so it is inert anywhere but Vercel.
+injectAnalytics();
 
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
 const hudRoot = document.getElementById('hud') as HTMLElement;
@@ -231,6 +237,8 @@ function newSeed(): number {
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // The build id must ride on the URL; the browser reinstalls the worker only
+    // when the script it fetches differs, and public/ files carry no build stamp.
+    void navigator.serviceWorker.register(`./sw.js?v=${__BUILD_ID__}`).catch(() => {});
   });
 }

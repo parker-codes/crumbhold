@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -12,6 +15,7 @@
     "sim": "bun scripts/harness.ts"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "three": "^0.185.1"
   },
   "devDependencies": {
