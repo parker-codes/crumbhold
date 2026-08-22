@@ -1151,6 +1151,20 @@ body {
   pointer-events: auto;
 }
 
+/*
+ * The secondary items at the foot of a sheet. A rule and a little more air are
+ * all the separation needed: the button that starts playing reads as the one
+ * thing to press, and the ways to read about the game sit under it.
+ */
+.sheet__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline-soft);
+}
+
 .rows {
   display: flex;
   flex-direction: column;

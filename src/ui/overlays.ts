@@ -8,6 +8,13 @@ import type { Settings } from '../game/types';
 
 export type OverlayName = 'title' | 'pause' | 'win' | 'lose' | 'none';
 
+/**
+ * Which panel of the open sheet is on screen. Instructions and settings are
+ * panels rather than blocks on the main list: a menu the player has to read
+ * past to find the one button they came for is not a menu.
+ */
+type OverlayView = 'main' | 'help' | 'settings';
+
 export interface OverlayCallbacks {
   onStart(): void;
   onTutorial(): void;
@@ -21,6 +28,9 @@ export interface OverlayCallbacks {
 export class Overlays {
   private readonly root: HTMLElement;
   private current: OverlayName = 'none';
+  private view: OverlayView = 'main';
+  /** Held so a panel can be opened and closed without rebuilding the sheet. */
+  private sim: Sim | null = null;
   private hasSavedRun = false;
 
   constructor(
@@ -45,13 +55,39 @@ export class Overlays {
 
   hide(): void {
     this.current = 'none';
+    this.view = 'main';
+    this.sim = null;
     this.root.innerHTML = '';
   }
 
   show(name: OverlayName, sim: Sim | null): void {
     this.current = name;
+    this.sim = sim;
+    // A sheet always opens on its own main list, never on a panel the player
+    // left open half an hour ago.
+    this.view = 'main';
+    this.render();
+  }
+
+  /**
+   * Closes an open panel and returns true, so Escape and the system back
+   * gesture leave the panel before they leave the sheet.
+   */
+  back(): boolean {
+    if (this.view === 'main') return false;
+    this.view = 'main';
+    this.render();
+    return true;
+  }
+
+  private open(view: OverlayView): void {
+    this.view = view;
+    this.render();
+  }
+
+  private render(): void {
     this.root.innerHTML = '';
-    if (name === 'none') return;
+    if (this.current === 'none') return;
     const sheet = document.createElement('div');
     sheet.className = 'sheet';
     const card = document.createElement('div');
@@ -59,15 +95,24 @@ export class Overlays {
     sheet.appendChild(card);
     this.root.appendChild(sheet);
 
-    switch (name) {
+    if (this.view === 'help') {
+      this.buildHelpPanel(card);
+      return;
+    }
+    if (this.view === 'settings') {
+      this.buildSettingsPanel(card);
+      return;
+    }
+    switch (this.current) {
       case 'title': this.buildTitle(card); break;
-      case 'pause': this.buildPause(card, sim); break;
-      case 'win': this.buildWin(card, sim); break;
-      case 'lose': this.buildLose(card, sim); break;
+      case 'pause': this.buildPause(card, this.sim); break;
+      case 'win': this.buildWin(card, this.sim); break;
+      case 'lose': this.buildLose(card, this.sim); break;
       default: break;
     }
   }
 
+  /** The name and the one button that starts playing, then the two ways in. */
   private buildTitle(card: HTMLElement): void {
     card.innerHTML = `
       <h1>Crumbhold</h1>
@@ -79,11 +124,10 @@ export class Overlays {
     } else {
       card.appendChild(button('big', 'Begin', () => this.callbacks.onStart()));
     }
-    card.appendChild(button('ghost', 'Tutorial', () => this.callbacks.onTutorial()));
-    const help = document.createElement('div');
-    help.className = 'help';
-    help.innerHTML = helpHtml();
-    card.appendChild(help);
+    card.appendChild(foot(
+      button('ghost', 'How to play', () => this.open('help')),
+      button('ghost', 'Tutorial', () => this.callbacks.onTutorial()),
+    ));
   }
 
   private buildPause(card: HTMLElement, sim: Sim | null): void {
@@ -100,11 +144,25 @@ export class Overlays {
       card.appendChild(rows);
     }
     card.appendChild(button('big', 'Resume', () => this.callbacks.onResume()));
-    card.appendChild(this.buildSettings());
+    card.appendChild(foot(
+      button('ghost', 'Settings', () => this.open('settings')),
+      button('ghost', 'How to play', () => this.open('help')),
+    ));
+  }
+
+  private buildHelpPanel(card: HTMLElement): void {
+    card.innerHTML = `<h2>How to play</h2>`;
     const help = document.createElement('div');
     help.className = 'help';
-    help.innerHTML = `<h2 style="font-size:20px">How to play</h2>${helpHtml()}`;
+    help.innerHTML = helpHtml();
     card.appendChild(help);
+    card.appendChild(button('ghost', 'Back', () => this.back()));
+  }
+
+  private buildSettingsPanel(card: HTMLElement): void {
+    card.innerHTML = `<h2>Settings</h2>`;
+    card.appendChild(this.buildSettings());
+    card.appendChild(button('ghost', 'Back', () => this.back()));
   }
 
   private buildWin(card: HTMLElement, sim: Sim | null): void {
@@ -233,6 +291,17 @@ function helpHtml(): string {
 
 function hasKeyboard(): boolean {
   return !isTouchInput();
+}
+
+/**
+ * The secondary items, set off from the button that starts playing. Everything
+ * here is a way to read about the game rather than a way into it.
+ */
+function foot(...items: HTMLElement[]): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'sheet__foot';
+  wrap.append(...items);
+  return wrap;
 }
 
 function row(label: string, value: string): string {
